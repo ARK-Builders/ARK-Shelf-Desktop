@@ -1,0 +1,21 @@
+{
+  "name": "ark-shelf-desktop",
+  "private": "true",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "cd app && BROWSER=none craco start",
+    "build": "cd app && craco build"
+  },
+  "workspaces": [
+    "app"
+  ],
+  "dependencies": {
+    "@tauri-apps/api": "^1.0.0-rc.6",
+    "next": "^12.1.6"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.0.0-rc.13"
+  },
+  "version": "0.1.0",
+  "license": "MIT"
+}
