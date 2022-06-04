@@ -1,0 +1,60 @@
+name: Build
+
+env:
+  CARGO_TERM_COLOR: always
+
+on: [push]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3.2.0
+        with:
+          node-version: '16.x'
+
+      - name: install dependencies (ubuntu only)
+        # if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config
+
+      - name: Fetch Node.js Dependencies
+        run: yarn
+
+      - name: Build Release Version
+        run: yarn tauri build
+
+      - name: Upload Appimage build
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: ark-shelf-desktop.AppImage
+          path: ./target/release/bundle/appimage/ark-shelf-desktop_*_amd64.AppImage
+
+      - name: Upload .deb build
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: ark-shelf-desktop.deb
+          path: ./target/release/bundle/deb/ark-shelf-desktop_*_amd64.deb
+
+      - name: Upload binary build
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: ark-shelf-desktop
+          path: ./target/release/ark-shelf-desktop
