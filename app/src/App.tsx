@@ -7,14 +7,13 @@ import {
   Grid,
   List,
   ListItem,
-  Link,
   ListItemText,
   Toolbar,
   Container,
   Typography,
   TextField,
 } from '@mui/material';
-import { useState, useLayoutEffect, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { dialog, invoke, clipboard } from '@tauri-apps/api';
 import { useForm, SubmitHandler } from 'react-hook-form';
 
@@ -23,12 +22,11 @@ interface LinkInfo {
   desc: string;
   url: string;
 }
-type LinkKey = keyof LinkInfo;
 const Home = () => {
-  const [linkNames, setLinkNames] = useState<string[]>([]);
+  const [, setLinkNames] = useState<string[]>([]);
   const [linkInfos, setLinkInfos] = useState<LinkInfo[]>([]);
   // const [refresh, setRefresh] = useState(false);
-  const { register, handleSubmit, watch } = useForm<LinkInfo>();
+  const { register, handleSubmit } = useForm<LinkInfo>();
   const createLink: SubmitHandler<LinkInfo> = (data) => {
     invoke('create_link', {
       ...data,
