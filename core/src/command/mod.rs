@@ -3,17 +3,26 @@ use std::{fs, path::PathBuf};
 use crate::{base::Link, Cli};
 
 use tauri::{Builder, Runtime};
-use url::Url;
+use url::{ParseError, Url};
 use walkdir::WalkDir;
 
 #[tauri::command]
 /// Create a `.link`
-fn create_link(title: String, desc: String, url: String, state: tauri::State<Cli>) {
-    let url = Url::parse(url.as_str()).unwrap();
+fn create_link(
+    title: String,
+    desc: String,
+    url: String,
+    state: tauri::State<Cli>,
+) -> Result<(), String> {
+    let url = match Url::parse(url.as_str()) {
+        Ok(val) => val,
+        Err(e) => return Err(e.to_string()),
+    };
     let link = Link::new(title, desc, url);
     let name = format!("{}.link", link.format_name());
     println!("{}", name);
     link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)));
+    Ok(())
 }
 
 #[tauri::command(async)]

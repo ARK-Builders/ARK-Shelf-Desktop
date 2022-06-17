@@ -23,6 +23,7 @@ url = { version = "2.2.2", features = ["serde"] }
 zip = "0.6.2"
 tauri-macros = "1.0.0-rc.8"
 walkdir = "2.3.2"
+anyhow = "1.0.57"
 
 [features]
 # by default Tauri runs in production mode
