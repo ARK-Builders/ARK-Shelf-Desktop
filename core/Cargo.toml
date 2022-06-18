@@ -21,10 +21,11 @@ clap = { version = "3.1.18", features = ["derive"] }
 home = "0.5.3"
 url = { version = "2.2.2", features = ["serde"] }
 zip = "0.6.2"
+scraper = "0.13.0"
 tauri-macros = "1.0.0-rc.8"
 walkdir = "2.3.2"
 anyhow = "1.0.57"
-
+reqwest = "0.11.11"
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL

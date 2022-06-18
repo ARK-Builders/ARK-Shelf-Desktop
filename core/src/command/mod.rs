@@ -1,6 +1,9 @@
 use std::{fs, path::PathBuf};
 
-use crate::{base::Link, Cli};
+use crate::{
+    base::{Link, OpenGraph},
+    Cli,
+};
 
 use tauri::{Builder, Runtime};
 use url::{ParseError, Url};
@@ -45,6 +48,11 @@ fn read_link_list(state: tauri::State<Cli>) -> Vec<String> {
 }
 
 #[tauri::command(async)]
+async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
+    Link::get_preview(url).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command(async)]
 /// Read data from `.link` file
 fn read_link(name: String, state: tauri::State<Cli>) -> Link {
     let link = Link::from(PathBuf::from(format!("{}/{}", &state.path, name)));
@@ -57,6 +65,7 @@ pub fn set_command<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         create_link,
         read_link,
         read_link_list,
-        delete_link
+        delete_link,
+        generate_link_preview,
     ])
 }

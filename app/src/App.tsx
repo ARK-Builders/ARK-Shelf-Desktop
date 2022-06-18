@@ -15,9 +15,10 @@ import {
   Pagination,
   IconButton,
   ButtonGroup,
+  Tooltip,
 } from '@mui/material';
 import { useState, useEffect, useCallback } from 'react';
-import { dialog, invoke, clipboard } from '@tauri-apps/api';
+import { invoke, clipboard } from '@tauri-apps/api';
 import { ToastContainer, toast, Slide } from 'react-toastify';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import 'react-toastify/dist/ReactToastify.css';
@@ -30,9 +31,7 @@ import {
   FormatListBulleted,
   LooksOne,
 } from '@mui/icons-material';
-import useSWR from 'swr';
-import { parseDocument } from 'htmlparser2';
-import { findOne, getAttributeValue } from 'domutils';
+
 interface LinkInfo {
   title: string;
   desc: string;
@@ -40,6 +39,30 @@ interface LinkInfo {
   name: string;
   created_time: any;
   score: number;
+}
+interface OpenGraph {
+  /// Represents the "og:title" OpenGraph meta tag.
+  ///
+  /// The title of your object as it should appear within
+  /// the graph, e.g., "The Rock".
+  title: string;
+  /// Represents the "og:description" OpenGraph meta tag
+  description: string;
+  /// Represents the "og:url" OpenGraph meta tag
+  url: string;
+  /// Represents the "og:image" OpenGraph meta tag
+  image: string;
+  /// Represents the "og:type" OpenGraph meta tag
+  ///
+  /// The type of your object, e.g., "video.movie". Depending on the type
+  /// you specify, other properties may also be required.
+  object_type: string;
+  /// Represents the "og:locale" OpenGraph meta tag
+  locale: string;
+}
+interface LinkCardProps {
+  link: LinkInfo;
+  index: number;
 }
 type SortMode = 'normal' | 'date' | 'score';
 const Home = () => {
@@ -82,92 +105,106 @@ const Home = () => {
     refreshInfo();
   }, [refreshInfo]);
 
-  interface LinkCardProps {
-    link: LinkInfo;
-    index: number;
-  }
-  console.log(linkInfos);
   const LinkCard = ({ link, index }: LinkCardProps) => {
-    const { data, error } = useSWR(link.url, (url) => {
-      fetch(url).then((data) => {
-        data.text().then((val) => {});
-      });
-    });
+    const [previewInfo, setPreviewInfo] = useState<OpenGraph>();
+
+    useEffect(() => {
+      invoke('generate_link_preview', {
+        url: link.url.toString(),
+      }).then((val) => setPreviewInfo(val as OpenGraph));
+    }, [link.url]);
+
     return (
-      <ListItem
-        dense
-        key={link.title}
-        secondaryAction={
-          <Grid container>
-            <Grid item m='auto'>
-              <Button
-                onClick={() => {
-                  clipboard.writeText(link.url);
-                }}>
-                {'COPY'}
-              </Button>
-            </Grid>
-            <Grid item m='auto' p='auto'>
-              <Button
-                onClick={() => {
-                  open(link.url.toString());
-                }}>
-                OPEN
-              </Button>
-              <Button
-                onClick={() => {
-                  invoke('delete_link', {
-                    name: link.name,
-                  });
-                  refreshInfo();
-                  toast('Link deleted!');
-                }}
-                color='error'>
-                DELETE
-              </Button>
-              <IconButton
-                color='primary'
-                onClick={() => {
-                  let linksInfo = linkInfos.map((val, idx) => {
-                    if (index === idx) {
-                      val.score += 1;
-                    }
-                    return val;
-                  });
-                  setLinkInfos(linksInfo);
-                }}>
-                <ArrowUpward />
-              </IconButton>
-              <IconButton
-                color='error'
-                onClick={() => {
-                  let linksInfo = linkInfos.map((val, idx) => {
-                    if (index === idx) {
-                      val.score -= 1;
-                    }
-                    return val;
-                  });
-                  setLinkInfos(linksInfo);
-                }}>
-                <ArrowDownward />
-              </IconButton>
-            </Grid>
-          </Grid>
+      <Tooltip
+        arrow
+        title={
+          <>
+            <Typography variant='body2'>
+              {previewInfo?.title ?? 'Preview may not available at the moment'}
+            </Typography>
+            <img
+              loading='lazy'
+              alt='preview'
+              src={previewInfo?.image}
+              width={250}></img>
+          </>
         }>
-        <ListItemText
-          primary={<Typography variant='h6'>{link.title}</Typography>}
-          secondary={
-            <>
-              <Typography variant='subtitle2'>{link.desc}</Typography>
-              <Typography variant='body2'>
-                {dayjs
-                  .unix(link.created_time.secs_since_epoch)
-                  .toDate()
-                  .toLocaleString()}
-              </Typography>
-            </>
-          }></ListItemText>
-      </ListItem>
+        <ListItem
+          dense
+          key={index}
+          secondaryAction={
+            <Grid container>
+              <Grid item m='auto'>
+                <Button
+                  onClick={() => {
+                    clipboard.writeText(link.url);
+                  }}>
+                  {'COPY'}
+                </Button>
+              </Grid>
+              <Grid item m='auto' p='auto'>
+                <Button
+                  onClick={() => {
+                    open(link.url.toString());
+                  }}>
+                  OPEN
+                </Button>
+                <Button
+                  onClick={() => {
+                    invoke('delete_link', {
+                      name: link.name,
+                    });
+                    refreshInfo();
+                    toast('Link deleted!');
+                  }}
+                  color='error'>
+                  DELETE
+                </Button>
+                <IconButton
+                  color='primary'
+                  onClick={() => {
+                    let linksInfo = linkInfos.map((val, idx) => {
+                      if (index === idx) {
+                        val.score += 1;
+                      }
+                      return val;
+                    });
+                    setLinkInfos(linksInfo);
+                  }}>
+                  <ArrowUpward />
+                </IconButton>
+                <IconButton
+                  color='error'
+                  onClick={() => {
+                    let linksInfo = linkInfos.map((val, idx) => {
+                      if (index === idx) {
+                        val.score -= 1;
+                      }
+                      return val;
+                    });
+                    setLinkInfos(linksInfo);
+                  }}>
+                  <ArrowDownward />
+                </IconButton>
+              </Grid>
+            </Grid>
+          }>
+          <ListItemText
+            disableTypography
+            primary={<Typography variant='h6'>{link.title}</Typography>}
+            secondary={
+              <>
+                <Typography variant='subtitle2'>{link.desc}</Typography>
+                <Typography variant='body2'>
+                  {dayjs
+                    .unix(link.created_time.secs_since_epoch)
+                    .toDate()
+                    .toLocaleString()}
+                </Typography>
+              </>
+            }></ListItemText>
+        </ListItem>
+      </Tooltip>
     );
   };
 
@@ -210,7 +247,11 @@ const Home = () => {
                     })
                     .slice(itemPerPage * page, itemPerPage * (page + 1))
                     .map((val, idx) => {
-                      return <LinkCard link={val} index={idx} />;
+                      return (
+                        <div id={idx.toString()} key={idx}>
+                          <LinkCard link={val} index={idx} />
+                        </div>
+                      );
                     })}
                 </List>
                 <Pagination
