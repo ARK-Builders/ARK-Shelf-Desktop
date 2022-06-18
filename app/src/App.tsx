@@ -24,7 +24,6 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import 'react-toastify/dist/ReactToastify.css';
 import dayjs from 'dayjs';
 import {
-  Add,
   ArrowDownward,
   ArrowUpward,
   CalendarMonth,
@@ -244,6 +243,7 @@ const Home = () => {
                         case 'score':
                           return b.score - a.score;
                       }
+                      return 0;
                     })
                     .slice(itemPerPage * page, itemPerPage * (page + 1))
                     .map((val, idx) => {
