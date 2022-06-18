@@ -112,7 +112,7 @@ const Home = () => {
         url: link.url.toString(),
       }).then((val) => setPreviewInfo(val as OpenGraph));
     }, [link.url]);
-
+    console.log(linkInfos);
     return (
       <Tooltip
         arrow
@@ -164,6 +164,7 @@ const Home = () => {
                   onClick={() => {
                     let linksInfo = linkInfos.map((val, idx) => {
                       if (index === idx) {
+                        console.log('adding', idx, index);
                         val.score += 1;
                       }
                       return val;
@@ -177,6 +178,7 @@ const Home = () => {
                   onClick={() => {
                     let linksInfo = linkInfos.map((val, idx) => {
                       if (index === idx) {
+                        console.log('Cutting', idx, index);
                         val.score -= 1;
                       }
                       return val;
@@ -231,6 +233,7 @@ const Home = () => {
               <CardContent>
                 <List>
                   {linkInfos
+                    // eslint-disable-next-line array-callback-return
                     .sort((a, b) => {
                       switch (mode) {
                         case 'normal':
@@ -243,16 +246,16 @@ const Home = () => {
                         case 'score':
                           return b.score - a.score;
                       }
-                      return 0;
                     })
-                    .slice(itemPerPage * page, itemPerPage * (page + 1))
+
                     .map((val, idx) => {
                       return (
                         <div id={idx.toString()} key={idx}>
                           <LinkCard link={val} index={idx} />
                         </div>
                       );
-                    })}
+                    })
+                    .slice(itemPerPage * page, itemPerPage * (page + 1))}
                 </List>
                 <Pagination
                   count={pageCount === 0 ? 1 : pageCount}
@@ -270,20 +273,25 @@ const Home = () => {
           <Grid item xs={4}>
             <Grid item>
               <ButtonGroup>
-                <IconButton
-                  onClick={() => {
-                    setMode('normal');
-                  }}>
-                  <FormatListBulleted />
-                </IconButton>
+                <Tooltip title={'Normal mode'}>
+                  <IconButton
+                    onClick={() => {
+                      setMode('normal');
+                    }}>
+                    <FormatListBulleted />
+                  </IconButton>
+                </Tooltip>
 
-                <IconButton onClick={() => setMode('date')}>
-                  <CalendarMonth />
-                </IconButton>
-
-                <IconButton onClick={() => setMode('score')}>
-                  <LooksOne />
-                </IconButton>
+                <Tooltip title={'Sorting By Date'}>
+                  <IconButton onClick={() => setMode('date')}>
+                    <CalendarMonth />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={'Sorting By Score'}>
+                  <IconButton onClick={() => setMode('score')}>
+                    <LooksOne />
+                  </IconButton>
+                </Tooltip>
               </ButtonGroup>
             </Grid>
             <form onSubmit={handleSubmit(createLink)}>

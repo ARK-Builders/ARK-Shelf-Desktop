@@ -25,7 +25,7 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
-    std::fs::create_dir_all(&cli.path);
+    std::fs::create_dir_all(&cli.path).unwrap();
     let builder = tauri::Builder::default();
     let builder = set_command(builder);
     builder

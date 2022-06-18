@@ -6,7 +6,7 @@ use crate::{
 };
 
 use tauri::{Builder, Runtime};
-use url::{ParseError, Url};
+use url::Url;
 use walkdir::WalkDir;
 
 #[tauri::command]
