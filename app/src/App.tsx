@@ -17,7 +17,7 @@ import {
   ButtonGroup,
   Tooltip,
 } from '@mui/material';
-import { useState, useEffect, useCallback, useReducer } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke, clipboard } from '@tauri-apps/api';
 import { ToastContainer, toast, Slide } from 'react-toastify';
 import { useForm, SubmitHandler } from 'react-hook-form';
@@ -231,8 +231,7 @@ const Home = () => {
     return (
       <List>
         {scoreLinkInfos
-          .map((val, idx, arr) => {
-            // console.log(val, arr);
+          .map((val, idx) => {
             return (
               <div id={val.title} key={val.title}>
                 <LinkListItem link={val} index={idx} />
