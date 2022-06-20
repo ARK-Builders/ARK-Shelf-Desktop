@@ -56,7 +56,7 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
 /// Read data from `.link` file
 fn read_link(name: String, state: tauri::State<Cli>) -> Link {
     let link = Link::from(PathBuf::from(format!("{}/{}", &state.path, name)));
-    println!("{:?}", link);
+    dbg!(&link);
     return link;
 }
 

@@ -17,7 +17,7 @@ import {
   ButtonGroup,
   Tooltip,
 } from '@mui/material';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useReducer } from 'react';
 import { invoke, clipboard } from '@tauri-apps/api';
 import { ToastContainer, toast, Slide } from 'react-toastify';
 import { useForm, SubmitHandler } from 'react-hook-form';
@@ -59,7 +59,7 @@ interface OpenGraph {
   /// Represents the "og:locale" OpenGraph meta tag
   locale: string;
 }
-interface LinkCardProps {
+interface LinkListItemProps {
   link: LinkInfo;
   index: number;
 }
@@ -71,20 +71,18 @@ const Home = () => {
   const { register, handleSubmit, reset } = useForm<LinkInfo>();
 
   const [page, setPage] = useState(0);
-  const itemPerPage = 2;
+  console.log(linkInfos);
+  const itemPerPage = 5;
   const pageCount = Math.ceil(linkInfos.length / itemPerPage);
   const createLink: SubmitHandler<LinkInfo> = (data) => {
     invoke('create_link', {
       ...data,
     }).then(() => {
-      // dialog.message('Link Created!');
       refreshInfo();
       toast('Link created!');
       reset();
-      // setRefresh(true)
     });
   };
-
   const refreshInfo = useCallback(async () => {
     const names = (await invoke('read_link_list')) as string[];
     setLinkNames(names);
@@ -98,50 +96,93 @@ const Home = () => {
         return link;
       })
     );
-    setLinkInfos(links);
-  }, []);
+    setLinkInfos(
+      (links as LinkInfo[])
+        // eslint-disable-next-line array-callback-return
+        .sort((a, b) => {
+          switch (mode) {
+            case 'normal':
+              return a.title.localeCompare(b.title);
+            case 'date':
+              return (
+                b.created_time.secs_since_epoch -
+                a.created_time.secs_since_epoch
+              );
+            // Default to score
+            case 'score':
+              return 0;
+          }
+        })
+    );
+  }, [mode]);
+
   useEffect(() => {
     refreshInfo();
   }, [refreshInfo]);
+  interface LinkListProps {
+    linkInfos: LinkInfo[];
+  }
+  const LinkList = ({ linkInfos }: LinkListProps) => {
+    const [scoreLinkInfos, setScoreLinkInfos] = useState<LinkInfo[]>(linkInfos);
 
-  const LinkCard = ({ link, index }: LinkCardProps) => {
-    const [previewInfo, setPreviewInfo] = useState<OpenGraph>();
+    const LinkListItem = ({ link, index }: LinkListItemProps) => {
+      const [previewInfo, setPreviewInfo] = useState<OpenGraph>();
 
-    useEffect(() => {
-      invoke('generate_link_preview', {
-        url: link.url.toString(),
-      }).then((val) => setPreviewInfo(val as OpenGraph));
-    }, [link.url]);
-    console.log(linkInfos);
-    return (
-      <Tooltip
-        arrow
-        title={
-          <>
-            <Typography variant='body2'>
-              {previewInfo?.title ?? 'Preview may not available at the moment'}
-            </Typography>
-            <img
-              loading='lazy'
-              alt='preview'
-              src={previewInfo?.image}
-              width={250}></img>
-          </>
-        }>
-        <ListItem
-          dense
-          key={index}
-          secondaryAction={
+      useEffect(() => {
+        invoke('generate_link_preview', {
+          url: link.url.toString(),
+        }).then((val) => setPreviewInfo(val as OpenGraph));
+      }, [link.url]);
+
+      return (
+        <Tooltip
+          arrow
+          title={
+            <>
+              <Typography variant='body2'>
+                {previewInfo?.title ??
+                  'Preview may not available at the moment'}
+              </Typography>
+              <img
+                loading='lazy'
+                alt='preview'
+                src={previewInfo?.image}
+                width={250}></img>
+            </>
+          }>
+          <ListItem
+            dense
+            key={index}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+            }}>
+            <ListItemText
+              primary={
+                <Typography
+                  sx={{
+                    maxWidth: '25rem',
+                  }}
+                  paragraph>
+                  {link.title}
+                </Typography>
+              }
+              secondary={dayjs
+                .unix(link.created_time.secs_since_epoch)
+                .toDate()
+                .toLocaleString()}></ListItemText>
+
             <Grid container>
-              <Grid item m='auto'>
+              <Grid item container m='auto'>
                 <Button
                   onClick={() => {
                     clipboard.writeText(link.url);
                   }}>
                   {'COPY'}
                 </Button>
-              </Grid>
-              <Grid item m='auto' p='auto'>
+                {/* </Grid>
+            <Grid item m='auto' p='auto'> */}
                 <Button
                   onClick={() => {
                     open(link.url.toString());
@@ -161,51 +202,45 @@ const Home = () => {
                 </Button>
                 <IconButton
                   color='primary'
+                  disabled={index === 0}
                   onClick={() => {
-                    let linksInfo = linkInfos.map((val, idx) => {
-                      if (index === idx) {
-                        console.log('adding', idx, index);
-                        val.score += 1;
-                      }
-                      return val;
-                    });
-                    setLinkInfos(linksInfo);
+                    let arr = Array.from(scoreLinkInfos);
+                    [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+                    console.log(arr);
+                    setScoreLinkInfos(arr);
                   }}>
                   <ArrowUpward />
                 </IconButton>
                 <IconButton
                   color='error'
+                  disabled={index === linkInfos.length - 1}
                   onClick={() => {
-                    let linksInfo = linkInfos.map((val, idx) => {
-                      if (index === idx) {
-                        console.log('Cutting', idx, index);
-                        val.score -= 1;
-                      }
-                      return val;
-                    });
-                    setLinkInfos(linksInfo);
+                    let arr = Array.from(scoreLinkInfos);
+                    [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+                    console.log(arr);
+                    setScoreLinkInfos(arr);
                   }}>
                   <ArrowDownward />
                 </IconButton>
               </Grid>
             </Grid>
-          }>
-          <ListItemText
-            disableTypography
-            primary={<Typography variant='h6'>{link.title}</Typography>}
-            secondary={
-              <>
-                <Typography variant='subtitle2'>{link.desc}</Typography>
-                <Typography variant='body2'>
-                  {dayjs
-                    .unix(link.created_time.secs_since_epoch)
-                    .toDate()
-                    .toLocaleString()}
-                </Typography>
-              </>
-            }></ListItemText>
-        </ListItem>
-      </Tooltip>
+          </ListItem>
+        </Tooltip>
+      );
+    };
+    return (
+      <List>
+        {scoreLinkInfos
+          .map((val, idx, arr) => {
+            // console.log(val, arr);
+            return (
+              <div id={val.title} key={val.title}>
+                <LinkListItem link={val} index={idx} />
+              </div>
+            );
+          })
+          .slice(itemPerPage * page, itemPerPage * (page + 1))}
+      </List>
     );
   };
 
@@ -231,32 +266,8 @@ const Home = () => {
           <Grid item xs={8}>
             <Card>
               <CardContent>
-                <List>
-                  {linkInfos
-                    // eslint-disable-next-line array-callback-return
-                    .sort((a, b) => {
-                      switch (mode) {
-                        case 'normal':
-                          return a.title.localeCompare(b.title);
-                        case 'date':
-                          return (
-                            b.created_time.secs_since_epoch -
-                            a.created_time.secs_since_epoch
-                          );
-                        case 'score':
-                          return b.score - a.score;
-                      }
-                    })
+                <LinkList linkInfos={linkInfos} />
 
-                    .map((val, idx) => {
-                      return (
-                        <div id={idx.toString()} key={idx}>
-                          <LinkCard link={val} index={idx} />
-                        </div>
-                      );
-                    })
-                    .slice(itemPerPage * page, itemPerPage * (page + 1))}
-                </List>
                 <Pagination
                   count={pageCount === 0 ? 1 : pageCount}
                   page={page + 1}
