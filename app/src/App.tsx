@@ -28,8 +28,9 @@ import {
   ArrowUpward,
   CalendarMonth,
   FormatListBulleted,
-  LooksOne,
+  SortByAlpha,
 } from '@mui/icons-material';
+import { intersection } from 'lodash';
 
 interface LinkInfo {
   title: string;
@@ -59,6 +60,10 @@ interface OpenGraph {
   /// Represents the "og:locale" OpenGraph meta tag
   locale: string;
 }
+interface Config {
+  mode: SortMode;
+  score: string[];
+}
 interface LinkListItemProps {
   link: LinkInfo;
   index: number;
@@ -66,26 +71,28 @@ interface LinkListItemProps {
 type SortMode = 'normal' | 'date' | 'score';
 const Home = () => {
   const [mode, setMode] = useState<SortMode>('normal');
-  const [, setLinkNames] = useState<string[]>([]);
+
   const [linkInfos, setLinkInfos] = useState<LinkInfo[]>([]);
   const { register, handleSubmit, reset } = useForm<LinkInfo>();
-
   const [page, setPage] = useState(0);
-  console.log(linkInfos);
   const itemPerPage = 5;
   const pageCount = Math.ceil(linkInfos.length / itemPerPage);
+
   const createLink: SubmitHandler<LinkInfo> = (data) => {
     invoke('create_link', {
       ...data,
     }).then(() => {
+      // Forced refreash view to ensure updated list.
       refreshInfo();
       toast('Link created!');
       reset();
     });
   };
+
+  // Refresh all info.
   const refreshInfo = useCallback(async () => {
     const names = (await invoke('read_link_list')) as string[];
-    setLinkNames(names);
+
     const links = await Promise.all(
       names.map(async (val) => {
         const link = {
@@ -95,7 +102,48 @@ const Home = () => {
         } as LinkInfo;
         return link;
       })
-    );
+    ).catch((e) => {
+      console.error(e);
+      throw e;
+    });
+
+    const defaultConfig: Config = {
+      mode: 'score',
+      score: links.map((val) => val.name),
+    };
+    // Get config or initialize one.
+    const initialConfig = await invoke<Config>('get_config').catch((e) => {
+      console.log('failed to get config', e);
+      // Fallback to create the default config
+      return invoke<Config>('set_config', {
+        config: defaultConfig,
+      });
+    });
+
+    console.log('initialConfig:', initialConfig);
+    // Merge List item into config score when mode is set to score.
+    if (mode === 'score') {
+      // merge config score with current linkList
+      //
+      // if a item is added/deleted from disk, it will disappeared on the list.
+      let mergedScore = intersection(
+        initialConfig.score,
+        links.map((val) => val.name)
+      );
+      console.log('merged:', mergedScore);
+      console.log('links', links);
+      let mergedLinkInfos = mergedScore.map((val) => {
+        const link = links.find((link) => {
+          return link.name === val;
+        });
+        return link;
+      }) as LinkInfo[];
+
+      console.log('mergedLinkInfos:', mergedLinkInfos);
+      setLinkInfos(mergedLinkInfos);
+      return;
+    }
+    // Sort and push link infos
     setLinkInfos(
       (links as LinkInfo[])
         // eslint-disable-next-line array-callback-return
@@ -109,25 +157,35 @@ const Home = () => {
                 a.created_time.secs_since_epoch
               );
             // Default to score
-            case 'score':
-              return 0;
           }
         })
+      // TODO
     );
   }, [mode]);
 
   useEffect(() => {
     refreshInfo();
   }, [refreshInfo]);
-  interface LinkListProps {
-    linkInfos: LinkInfo[];
-  }
-  const LinkList = ({ linkInfos }: LinkListProps) => {
-    const [scoreLinkInfos, setScoreLinkInfos] = useState<LinkInfo[]>(linkInfos);
 
+  const updateScore = (arr: LinkInfo[]) => {
+    const updatedConfig: Config = {
+      mode: 'score',
+      score: arr.map((val) => val.name),
+    };
+    console.log('updatedConfig:', updatedConfig);
+    invoke('set_config', {
+      config: updatedConfig,
+    })
+      .then((_) => {
+        console.log('successfully set config');
+      })
+      .catch((e) => {
+        throw e;
+      });
+  };
+  const LinkList = () => {
     const LinkListItem = ({ link, index }: LinkListItemProps) => {
       const [previewInfo, setPreviewInfo] = useState<OpenGraph>();
-
       useEffect(() => {
         invoke('generate_link_preview', {
           url: link.url.toString(),
@@ -181,8 +239,6 @@ const Home = () => {
                   }}>
                   {'COPY'}
                 </Button>
-                {/* </Grid>
-            <Grid item m='auto' p='auto'> */}
                 <Button
                   onClick={() => {
                     open(link.url.toString());
@@ -200,25 +256,28 @@ const Home = () => {
                   color='error'>
                   DELETE
                 </Button>
+
                 <IconButton
                   color='primary'
-                  disabled={index === 0}
+                  disabled={index === 0 || mode !== 'score'}
                   onClick={() => {
-                    let arr = Array.from(scoreLinkInfos);
+                    let arr = Array.from(linkInfos);
                     [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
                     console.log(arr);
-                    setScoreLinkInfos(arr);
+                    setLinkInfos(arr);
+                    updateScore(arr);
                   }}>
                   <ArrowUpward />
                 </IconButton>
                 <IconButton
                   color='error'
-                  disabled={index === linkInfos.length - 1}
+                  disabled={index === linkInfos.length - 1 || mode !== 'score'}
                   onClick={() => {
-                    let arr = Array.from(scoreLinkInfos);
+                    let arr = Array.from(linkInfos);
                     [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
                     console.log(arr);
-                    setScoreLinkInfos(arr);
+                    setLinkInfos(arr);
+                    updateScore(arr);
                   }}>
                   <ArrowDownward />
                 </IconButton>
@@ -230,7 +289,7 @@ const Home = () => {
     };
     return (
       <List>
-        {scoreLinkInfos
+        {linkInfos
           .map((val, idx) => {
             return (
               <div id={val.title} key={val.title}>
@@ -265,7 +324,7 @@ const Home = () => {
           <Grid item xs={8}>
             <Card>
               <CardContent>
-                <LinkList linkInfos={linkInfos} />
+                <LinkList />
 
                 <Pagination
                   count={pageCount === 0 ? 1 : pageCount}
@@ -282,24 +341,30 @@ const Home = () => {
           </Grid>
           <Grid item xs={4}>
             <Grid item>
-              <ButtonGroup>
-                <Tooltip title={'Normal mode'}>
+              <ButtonGroup variant='outlined'>
+                <Tooltip key='alphabet' title={'Sorting By Alphabet'}>
                   <IconButton
                     onClick={() => {
                       setMode('normal');
                     }}>
-                    <FormatListBulleted />
+                    <SortByAlpha />
                   </IconButton>
                 </Tooltip>
 
-                <Tooltip title={'Sorting By Date'}>
-                  <IconButton onClick={() => setMode('date')}>
+                <Tooltip key='date' title={'Sorting By Date'}>
+                  <IconButton
+                    onClick={() => {
+                      setMode('date');
+                    }}>
                     <CalendarMonth />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title={'Sorting By Score'}>
-                  <IconButton onClick={() => setMode('score')}>
-                    <LooksOne />
+                <Tooltip key='score' title={'Sorting By Score'}>
+                  <IconButton
+                    onClick={() => {
+                      setMode('score');
+                    }}>
+                    <FormatListBulleted />
                   </IconButton>
                 </Tooltip>
               </ButtonGroup>

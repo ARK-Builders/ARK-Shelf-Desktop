@@ -1,7 +1,11 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
+};
 
 use crate::{
-    base::{Link, OpenGraph},
+    base::{Config, Link, OpenGraph},
     Cli,
 };
 
@@ -53,6 +57,23 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
 }
 
 #[tauri::command(async)]
+fn get_config(state: tauri::State<Cli>) -> Result<Config, String> {
+    let config_path = PathBuf::from(&state.path).join("ark_config");
+    let file = File::open(config_path).map_err(|e| e.to_string())?;
+    let j = serde_json::from_reader(file).map_err(|e| e.to_string())?;
+    Ok(j)
+}
+
+#[tauri::command(async)]
+fn set_config(config: Config, state: tauri::State<Cli>) -> Result<(), String> {
+    let config_path = PathBuf::from(&state.path).join("ark_config");
+    let mut file = File::create(config_path).map_err(|e| e.to_string())?;
+    file.write_all(serde_json::to_vec(&config).unwrap().as_slice())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command(async)]
 /// Read data from `.link` file
 fn read_link(name: String, state: tauri::State<Cli>) -> Link {
     let link = Link::from(PathBuf::from(format!("{}/{}", &state.path, name)));
@@ -63,9 +84,11 @@ fn read_link(name: String, state: tauri::State<Cli>) -> Link {
 pub fn set_command<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     builder.invoke_handler(tauri::generate_handler![
         create_link,
-        read_link,
         read_link_list,
         delete_link,
         generate_link_preview,
+        read_link,
+        get_config,
+        set_config
     ])
 }

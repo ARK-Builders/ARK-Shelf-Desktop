@@ -17,6 +17,7 @@
     "@types/react-dom": "^18.0.0",
     "axios": "^0.27.2",
     "dayjs": "^1.11.3",
+    "lodash": "^4.17.21",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "react-hook-form": "^7.31.3",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@craco/craco": "^6.4.3",
+    "@types/lodash": "^4.14.182",
     "craco-swc": "^0.5.1"
   }
 }
