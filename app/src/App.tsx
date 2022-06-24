@@ -30,7 +30,6 @@ import {
   FormatListBulleted,
   SortByAlpha,
 } from '@mui/icons-material';
-import { intersection } from 'lodash';
 
 interface LinkInfo {
   title: string;
@@ -60,9 +59,9 @@ interface OpenGraph {
   /// Represents the "og:locale" OpenGraph meta tag
   locale: string;
 }
-interface Config {
-  mode: SortMode;
-  score: string[];
+interface LinkScoreMap {
+  name: string;
+  value: number;
 }
 interface LinkListItemProps {
   link: LinkInfo;
@@ -73,11 +72,13 @@ const Home = () => {
   const [mode, setMode] = useState<SortMode>('normal');
 
   const [linkInfos, setLinkInfos] = useState<LinkInfo[]>([]);
+  const [scores, setScores] = useState<LinkScoreMap[]>([]);
+
   const { register, handleSubmit, reset } = useForm<LinkInfo>();
   const [page, setPage] = useState(0);
   const itemPerPage = 5;
   const pageCount = Math.ceil(linkInfos.length / itemPerPage);
-
+  console.log(linkInfos);
   const createLink: SubmitHandler<LinkInfo> = (data) => {
     invoke('create_link', {
       ...data,
@@ -106,43 +107,11 @@ const Home = () => {
       console.error(e);
       throw e;
     });
-
-    const defaultConfig: Config = {
-      mode: 'score',
-      score: links.map((val) => val.name),
-    };
-    // Get config or initialize one.
-    const initialConfig = await invoke<Config>('get_config').catch((e) => {
-      console.log('failed to get config', e);
-      // Fallback to create the default config
-      return invoke<Config>('set_config', {
-        config: defaultConfig,
-      });
+    const scores = await invoke<LinkScoreMap[]>('get_scores').catch((e) => {
+      console.error(e);
+      return [] as LinkScoreMap[];
     });
-
-    console.log('initialConfig:', initialConfig);
-    // Merge List item into config score when mode is set to score.
-    if (mode === 'score') {
-      // merge config score with current linkList
-      //
-      // if a item is added/deleted from disk, it will disappeared on the list.
-      let mergedScore = intersection(
-        initialConfig.score,
-        links.map((val) => val.name)
-      );
-      console.log('merged:', mergedScore);
-      console.log('links', links);
-      let mergedLinkInfos = mergedScore.map((val) => {
-        const link = links.find((link) => {
-          return link.name === val;
-        });
-        return link;
-      }) as LinkInfo[];
-
-      console.log('mergedLinkInfos:', mergedLinkInfos);
-      setLinkInfos(mergedLinkInfos);
-      return;
-    }
+    setScores(scores);
     // Sort and push link infos
     setLinkInfos(
       (links as LinkInfo[])
@@ -156,10 +125,15 @@ const Home = () => {
                 b.created_time.secs_since_epoch -
                 a.created_time.secs_since_epoch
               );
-            // Default to score
+            case 'score':
+              const item_a =
+                scores.find((val) => val.name === a.name)?.value ?? 0;
+              const item_b =
+                scores.find((val) => val.name === b.name)?.value ?? 0;
+
+              return item_b - item_a;
           }
         })
-      // TODO
     );
   }, [mode]);
 
@@ -167,22 +141,6 @@ const Home = () => {
     refreshInfo();
   }, [refreshInfo]);
 
-  const updateScore = (arr: LinkInfo[]) => {
-    const updatedConfig: Config = {
-      mode: 'score',
-      score: arr.map((val) => val.name),
-    };
-    console.log('updatedConfig:', updatedConfig);
-    invoke('set_config', {
-      config: updatedConfig,
-    })
-      .then((_) => {
-        console.log('successfully set config');
-      })
-      .catch((e) => {
-        throw e;
-      });
-  };
   const LinkList = () => {
     const LinkListItem = ({ link, index }: LinkListItemProps) => {
       const [previewInfo, setPreviewInfo] = useState<OpenGraph>();
@@ -259,28 +217,54 @@ const Home = () => {
 
                 <IconButton
                   color='primary'
-                  disabled={index === 0 || mode !== 'score'}
+                  disabled={mode !== 'score'}
                   onClick={() => {
-                    let arr = Array.from(linkInfos);
-                    [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+                    let arr = Array.from(scores);
+                    arr = arr.map((val) => {
+                      if (val.name === link.name) {
+                        val.value += 1;
+                      }
+                      return val;
+                    });
                     console.log(arr);
-                    setLinkInfos(arr);
-                    updateScore(arr);
+                    invoke('set_scores', {
+                      linkScoreMaps: arr,
+                    });
+                    // setScores(arr);
+                    refreshInfo();
                   }}>
                   <ArrowUpward />
                 </IconButton>
                 <IconButton
                   color='error'
-                  disabled={index === linkInfos.length - 1 || mode !== 'score'}
+                  disabled={mode !== 'score'}
                   onClick={() => {
-                    let arr = Array.from(linkInfos);
-                    [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+                    let arr = Array.from(scores);
+                    arr = arr.map((val) => {
+                      if (val.name === link.name) {
+                        val.value -= 1;
+                      }
+                      return val;
+                    });
                     console.log(arr);
-                    setLinkInfos(arr);
-                    updateScore(arr);
+                    setScores(arr);
+                    invoke('set_scores', {
+                      linkScoreMaps: arr,
+                    }).then(() => {
+                      refreshInfo();
+                    });
                   }}>
                   <ArrowDownward />
                 </IconButton>
+                <Typography
+                  variant='body1'
+                  my={'auto'}
+                  sx={{
+                    display: mode === 'score' ? 'block' : 'none',
+                  }}>
+                  Score:
+                  {scores.find((val) => val.name === link.name)?.value}
+                </Typography>
               </Grid>
             </Grid>
           </ListItem>
