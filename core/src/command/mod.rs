@@ -1,13 +1,12 @@
 use std::{
-    ffi::OsString,
     fs::{self, File},
-    io::{Read, Write},
+    io::Write,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 use crate::{
-    base::{Link, LinkScoreMap, OpenGraph, Score, Scores},
+    base::{Link, OpenGraph, Score, Scores},
     Cli, ARK_SHELF_WORKING_DIR, SCORES_PATH,
 };
 
@@ -16,7 +15,7 @@ use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
 #[tauri::command]
-/// Create a `.lin&mut k`
+/// Create a `.link`
 fn create_link(
     title: String,
     desc: String,
@@ -78,12 +77,6 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
 /// Get the score list
 #[tauri::command(async)]
 fn get_scores(scores: tauri::State<Arc<Mutex<Scores>>>) -> Result<Scores, String> {
-    // let mut file = File::open(SCORES_PATH.as_path()).map_err(|e| e.to_string())?;
-    // let mut string_buf = String::new();
-    // file.read_to_string(&mut string_buf)
-    //     .map_err(|e| e.to_string())?;
-    // let scores = Score::parse_and_merge(string_buf);
-
     Ok(scores.lock().unwrap().clone())
 }
 

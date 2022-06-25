@@ -14,7 +14,7 @@ use notify::{watcher, DebouncedEvent, Watcher};
 use std::{
     fs::File,
     io::{Read, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{mpsc::channel, Arc, Mutex},
     thread,
     time::Duration,
@@ -124,10 +124,15 @@ fn main() {
         .unwrap_or_else(|_| File::create(SCORES_PATH.as_path()).unwrap());
 
     let mut scores_string = String::new();
-
+    let mut scores = vec![];
     scores_file.read_to_string(&mut scores_string).unwrap_or(0);
-    let scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.as_path());
+
     // Skip if there's no content in the file.
+    if !scores_string.is_empty() {
+        scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.as_path());
+    } else {
+        scores = Score::merge(scores, ARK_SHELF_WORKING_DIR.as_path());
+    }
 
     dbg!(&scores);
 

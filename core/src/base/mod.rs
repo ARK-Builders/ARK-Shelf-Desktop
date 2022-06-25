@@ -57,7 +57,6 @@ impl Score {
             .map(|val| {
                 let mapped = val.split(": ").collect::<Vec<&str>>();
                 Score {
-                    // TODO
                     name: String::new(),
                     hash: mapped[0].to_string(),
                     value: i64::from_str_radix(mapped[1], 10).unwrap(),
