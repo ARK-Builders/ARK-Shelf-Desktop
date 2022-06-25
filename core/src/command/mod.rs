@@ -3,6 +3,8 @@ use std::{
     io::Write,
     path::PathBuf,
     sync::{Arc, Mutex},
+    thread::sleep,
+    time::Duration,
 };
 
 use crate::{
@@ -28,8 +30,9 @@ fn create_link(
     };
     let link = Link::new(title, desc, url);
     let name = format!("{}.link", link.format_name());
-    println!("{}", name);
+    dbg!(&name);
     link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)));
+    sleep(Duration::from_millis(305));
     Ok(())
 }
 
@@ -37,6 +40,7 @@ fn create_link(
 /// Remove a `.link` from directory
 fn delete_link(name: String, state: tauri::State<Cli>) {
     fs::remove_file(format!("{}/{}", &state.path, name)).expect("cannot remove the link");
+    sleep(Duration::from_millis(305));
 }
 
 fn get_fs_links() -> Vec<DirEntry> {
@@ -89,7 +93,7 @@ fn set_scores(
     state_scores: tauri::State<Arc<Mutex<Scores>>>,
 ) -> Result<(), String> {
     *state_scores.lock().unwrap() = scores.clone();
-
+    dbg!(&scores);
     let mut scores_file = File::options()
         .write(true)
         .truncate(true)

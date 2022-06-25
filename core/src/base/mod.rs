@@ -54,12 +54,15 @@ impl Score {
     pub fn parse(content: String) -> Scores {
         let splited = content
             .split("\n")
+            .filter(|val| !val.is_empty())
             .map(|val| {
                 let mapped = val.split(": ").collect::<Vec<&str>>();
+
+                dbg!(&mapped);
                 Score {
                     name: String::new(),
                     hash: mapped[0].to_string(),
-                    value: i64::from_str_radix(mapped[1], 10).unwrap(),
+                    value: i64::from_str_radix(mapped[1], 10).unwrap_or(0),
                 }
             })
             .collect::<Vec<Score>>();
@@ -117,13 +120,19 @@ impl Score {
         merged_scores
     }
     pub fn format(hash: String, value: i64) -> String {
+        if value == 0 {
+            return String::from(format!("{hash}: "));
+        }
         String::from(format!("{hash}: {value}"))
     }
     pub fn into_lines(arr: Scores) -> String {
-        arr.iter()
+        let mut lines = arr
+            .iter()
             .map(|s| Score::format(s.hash.clone(), s.value))
             .collect::<Vec<String>>()
-            .join("\n")
+            .join("\n");
+        lines.push_str("\n");
+        lines
     }
 }
 

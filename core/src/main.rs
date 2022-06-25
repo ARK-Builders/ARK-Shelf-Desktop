@@ -50,7 +50,7 @@ struct Cli {
 fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
     thread::spawn(move || {
         let (tx, rx) = channel();
-        let mut watcher = watcher(tx, Duration::from_secs(1)).unwrap();
+        let mut watcher = watcher(tx, Duration::from_millis(300)).unwrap();
         watcher
             .watch(path, notify::RecursiveMode::NonRecursive)
             .unwrap();
@@ -64,18 +64,20 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                             hash: Score::calc_hash(path),
                             value: 0,
                         };
+                        scores.lock().unwrap().push(score.clone());
+                        dbg!(&scores);
                         let mut score_file = File::options()
+                            .write(true)
                             .append(true)
                             .open(SCORES_PATH.as_path())
                             .unwrap();
-                        score_file
-                            .write_all(format!("\n{}", score.to_string()).as_bytes())
-                            .unwrap();
+                        writeln!(score_file, "{}", score.to_string()).unwrap();
                     }
                     // Remove from score file
                     DebouncedEvent::NoticeRemove(path) => {
                         let removed_link_name =
                             path.file_name().unwrap().to_string_lossy().to_string();
+                        dbg!(&removed_link_name);
                         let filtered_scores = scores
                             .lock()
                             .unwrap()
@@ -83,6 +85,10 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                             .filter(|s| s.name != removed_link_name)
                             .map(|s| s.clone())
                             .collect::<Vec<_>>();
+
+                        *scores.lock().unwrap() = filtered_scores.clone();
+                        dbg!(&scores);
+
                         let mut buf = String::new();
                         let mut scores_file = File::options()
                             .read(true)
@@ -95,9 +101,11 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                             .truncate(true)
                             .open(SCORES_PATH.as_path())
                             .unwrap();
-                        merged_scores_file
-                            .write_all(Score::into_lines(filtered_scores).as_bytes())
-                            .unwrap();
+                        if !filtered_scores.is_empty() {
+                            merged_scores_file
+                                .write_all(Score::into_lines(filtered_scores).as_bytes())
+                                .unwrap();
+                        }
                     }
                     _ => {}
                 },

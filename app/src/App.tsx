@@ -79,14 +79,15 @@ const Home = () => {
   const itemPerPage = 5;
   const pageCount = Math.ceil(linkInfos.length / itemPerPage);
   console.log(linkInfos);
+  console.log('scores:', scores);
   const createLink: SubmitHandler<LinkInfo> = (data) => {
     invoke('create_link', {
       ...data,
     }).then(() => {
-      // Forced refreash view to ensure updated list.
       refreshInfo();
       toast('Link created!');
       reset();
+      // Forced refreash view to ensure updated list.
     });
   };
 
@@ -227,6 +228,7 @@ const Home = () => {
                       return val;
                     });
                     console.log(arr);
+                    setScores(arr);
                     invoke('set_scores', {
                       scores: arr,
                     }).then(() => refreshInfo());
