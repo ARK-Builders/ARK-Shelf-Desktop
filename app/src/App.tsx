@@ -228,10 +228,8 @@ const Home = () => {
                     });
                     console.log(arr);
                     invoke('set_scores', {
-                      linkScoreMaps: arr,
-                    });
-                    // setScores(arr);
-                    refreshInfo();
+                      scores: arr,
+                    }).then(() => refreshInfo());
                   }}>
                   <ArrowUpward />
                 </IconButton>
@@ -249,7 +247,7 @@ const Home = () => {
                     console.log(arr);
                     setScores(arr);
                     invoke('set_scores', {
-                      linkScoreMaps: arr,
+                      scores: arr,
                     }).then(() => {
                       refreshInfo();
                     });

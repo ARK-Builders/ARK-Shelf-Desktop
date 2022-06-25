@@ -3,11 +3,12 @@ use std::{
     fs::{self, File},
     io::{Read, Write},
     path::PathBuf,
+    sync::{Arc, Mutex},
 };
 
 use crate::{
-    base::{Link, LinkScoreMap, OpenGraph, Score},
-    Cli, SCORES_PATH,
+    base::{Link, LinkScoreMap, OpenGraph, Score, Scores},
+    Cli, ARK_SHELF_WORKING_DIR, SCORES_PATH,
 };
 
 use tauri::{Builder, Runtime};
@@ -39,8 +40,8 @@ fn delete_link(name: String, state: tauri::State<Cli>) {
     fs::remove_file(format!("{}/{}", &state.path, name)).expect("cannot remove the link");
 }
 
-fn get_fs_links(state: tauri::State<Cli>) -> Vec<DirEntry> {
-    WalkDir::new(state.path.clone())
+fn get_fs_links() -> Vec<DirEntry> {
+    WalkDir::new(ARK_SHELF_WORKING_DIR.as_path())
         .max_depth(1)
         .into_iter()
         .filter(|file| {
@@ -58,12 +59,14 @@ fn get_fs_links(state: tauri::State<Cli>) -> Vec<DirEntry> {
 
 #[tauri::command(async)]
 /// Read names of `.link` in user specific directory
-fn read_link_list(state: tauri::State<Cli>) -> Vec<String> {
+fn read_link_list() -> Vec<String> {
     let mut path_list = vec![];
-    for item in get_fs_links(state.clone()) {
+    for item in get_fs_links() {
+        dbg!(&item);
         let file_name = item.file_name().to_str().unwrap().to_string();
         path_list.push(file_name);
     }
+    dbg!(&path_list);
     path_list
 }
 
@@ -74,69 +77,25 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
 
 /// Get the score list
 #[tauri::command(async)]
-fn get_scores(state: tauri::State<Cli>) -> Result<Vec<LinkScoreMap>, String> {
-    let mut file = File::open(SCORES_PATH.as_path()).map_err(|e| e.to_string())?;
-    let mut string_buf = String::new();
-    file.read_to_string(&mut string_buf)
-        .map_err(|e| e.to_string())?;
-    let scores = Score::parse(string_buf);
-    let fs_links = get_fs_links(state);
+fn get_scores(scores: tauri::State<Arc<Mutex<Scores>>>) -> Result<Scores, String> {
+    // let mut file = File::open(SCORES_PATH.as_path()).map_err(|e| e.to_string())?;
+    // let mut string_buf = String::new();
+    // file.read_to_string(&mut string_buf)
+    //     .map_err(|e| e.to_string())?;
+    // let scores = Score::parse_and_merge(string_buf);
 
-    let link_score_maps = fs_links
-        .iter()
-        .map(|entry| {
-            let item = scores
-                .iter()
-                .find(|s| Score::calc_hash(entry.path()) == s.hash)
-                .unwrap();
-            LinkScoreMap {
-                name: entry.file_name().to_str().unwrap().to_string(),
-                value: item.value,
-            }
-        })
-        .collect::<Vec<_>>();
-    Ok(link_score_maps)
+    Ok(scores.lock().unwrap().clone())
 }
 
 /// Set scores
 ///
 /// Only affected scores file.
 #[tauri::command(async)]
-fn set_scores(link_score_maps: Vec<LinkScoreMap>, state: tauri::State<Cli>) -> Result<(), String> {
-    let mut buf = String::new();
-    let mut scores_file = File::options()
-        .read(true)
-        .open(SCORES_PATH.as_path())
-        .unwrap();
-    scores_file
-        .read_to_string(&mut buf)
-        .map_err(|e| e.to_string())?;
-
-    let scores = Score::parse(buf);
-    let fs_links = get_fs_links(state);
-
-    let transformed = link_score_maps
-        .iter()
-        .map(|s| {
-            let item = fs_links
-                .iter()
-                .find(|e| e.file_name().to_os_string() == OsString::from(s.name.clone()))
-                .unwrap();
-
-            Score {
-                hash: Score::calc_hash(item.path()),
-                value: s.value,
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let merged = scores
-        .iter()
-        .map(|s| match transformed.iter().find(|&ms| ms.hash == s.hash) {
-            Some(item) => item.clone(),
-            None => s.clone(),
-        })
-        .collect::<Vec<_>>();
+fn set_scores(
+    scores: Scores,
+    state_scores: tauri::State<Arc<Mutex<Scores>>>,
+) -> Result<(), String> {
+    *state_scores.lock().unwrap() = scores.clone();
 
     let mut scores_file = File::options()
         .write(true)
@@ -144,7 +103,7 @@ fn set_scores(link_score_maps: Vec<LinkScoreMap>, state: tauri::State<Cli>) -> R
         .open(SCORES_PATH.as_path())
         .unwrap();
     scores_file
-        .write_all(Score::into_lines(merged).as_bytes())
+        .write_all(Score::into_lines(scores).as_bytes())
         .map_err(|e| e.to_string())?;
     Ok(())
 }
