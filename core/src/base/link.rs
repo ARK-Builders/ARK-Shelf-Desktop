@@ -42,7 +42,7 @@ impl Link {
         s.finish().to_string()
     }
     /// Write zipped file to path
-    pub fn write_to_path(&self, path: PathBuf) {
+    pub async fn write_to_path(&self, path: PathBuf) {
         let j = serde_json::to_string(self).unwrap();
         let link_file = File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(link_file);
@@ -51,13 +51,22 @@ impl Link {
         zip.start_file("link.json", options)
             .expect("cannot create link.json");
         zip.write(j.as_bytes()).unwrap();
+
+        let preview_data = Link::get_preview(self.url.clone())
+            .await
+            .unwrap_or_default();
+        let image_data = preview_data.fetch_image().await.unwrap_or_default();
+        zip.start_file("preview.png", options).unwrap();
+        zip.write(&image_data).unwrap();
         zip.finish().unwrap();
     }
     /// Get metadata of the link.
-    pub async fn get_preview(url: String) -> Result<OpenGraph, reqwest::Error> {
-        let scraper = reqwest::get(url).await?.text().await?;
+    pub async fn get_preview<S>(url: S) -> Result<OpenGraph, reqwest::Error>
+    where
+        S: Into<String>,
+    {
+        let scraper = reqwest::get(url.into()).await?.text().await?;
         let html = Html::parse_document(&scraper.as_str());
-
         Ok(OpenGraph {
             title: select_og(&html, OpenGraphTag::Title),
             description: select_og(&html, OpenGraphTag::Description),
@@ -80,7 +89,7 @@ fn select_og(html: &Html, tag: OpenGraphTag) -> Option<String> {
 
     None
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct OpenGraph {
     /// Represents the "og:title" OpenGraph meta tag.
     ///
@@ -101,7 +110,16 @@ pub struct OpenGraph {
     /// Represents the "og:locale" OpenGraph meta tag
     locale: Option<String>,
 }
-
+impl OpenGraph {
+    pub async fn fetch_image(&self) -> Option<Vec<u8>> {
+        if let Some(url) = &self.image {
+            let mut res = reqwest::get(url).await.unwrap();
+            Some(res.bytes().await.unwrap().to_vec())
+        } else {
+            None
+        }
+    }
+}
 /// OpenGraphTag meta tags collection
 pub enum OpenGraphTag {
     /// Represents the "og:title" OpenGraph meta tag.

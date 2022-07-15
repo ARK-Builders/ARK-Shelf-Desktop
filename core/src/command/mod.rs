@@ -16,13 +16,13 @@ use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
-#[tauri::command]
+#[tauri::command(async)]
 /// Create a `.link`
-fn create_link(
+async fn create_link(
     title: String,
     desc: String,
     url: String,
-    state: tauri::State<Cli>,
+    state: tauri::State<'_, Cli>,
 ) -> Result<(), String> {
     let url = match Url::parse(url.as_str()) {
         Ok(val) => val,
@@ -31,7 +31,8 @@ fn create_link(
     let link = Link::new(title, desc, url);
     let name = format!("{}.link", link.format_name());
     dbg!(&name);
-    link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)));
+    link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)))
+        .await;
     sleep(Duration::from_millis(305));
     Ok(())
 }
