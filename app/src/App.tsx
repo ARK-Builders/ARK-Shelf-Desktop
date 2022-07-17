@@ -20,7 +20,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { invoke, clipboard } from '@tauri-apps/api';
 import { ToastContainer, toast, Slide } from 'react-toastify';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import 'react-toastify/dist/ReactToastify.css';
 import dayjs from 'dayjs';
 import {
@@ -74,7 +74,16 @@ const Home = () => {
   const [linkInfos, setLinkInfos] = useState<LinkInfo[]>([]);
   const [scores, setScores] = useState<LinkScoreMap[]>([]);
 
-  const { register, handleSubmit, reset } = useForm<LinkInfo>();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    getValues,
+    control,
+    getFieldState,
+    formState: { dirtyFields, isDirty },
+  } = useForm<LinkInfo>();
   const [page, setPage] = useState(0);
   const itemPerPage = 5;
   const pageCount = Math.ceil(linkInfos.length / itemPerPage);
@@ -285,7 +294,7 @@ const Home = () => {
       </List>
     );
   };
-
+  console.log('dirty:', dirtyFields);
   return (
     <>
       <AppBar position='fixed'>
@@ -354,26 +363,71 @@ const Home = () => {
               </ButtonGroup>
             </Grid>
             <form onSubmit={handleSubmit(createLink)}>
-              <TextField
-                fullWidth
-                label='url'
-                margin='normal'
-                {...register('url', { required: true })}></TextField>
-              <TextField
-                fullWidth
-                label='title'
-                margin='normal'
-                {...register('title', { required: true })}></TextField>
-              <TextField
-                fullWidth
-                label='description(optional)'
-                margin='normal'
-                {...register('desc', {
-                  required: false,
-                  value: '',
-                })}></TextField>
+              <Controller
+                control={control}
+                name='url'
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <TextField
+                    fullWidth
+                    label='URL'
+                    margin='normal'
+                    required={true}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    value={value ?? ''}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name='title'
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <TextField
+                    fullWidth
+                    label='Title'
+                    margin='normal'
+                    required={true}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    value={value ?? ''}
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name='desc'
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <TextField
+                    fullWidth
+                    label='Description (optional)'
+                    margin='normal'
+                    required={false}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    value={value ?? ''}
+                  />
+                )}
+              />
 
               <Button type='submit'>Create</Button>
+              <Button
+                onClick={() => {
+                  if (isDirty && !dirtyFields.name && !dirtyFields.title) {
+                    let url = getValues('url');
+                    invoke('generate_link_preview', {
+                      url: url.toString(),
+                    }).then((val) => {
+                      let data = val as OpenGraph;
+                      setValue('title', data.title, { shouldDirty: true });
+                      setValue('desc', data.description, { shouldDirty: true });
+                      console.log(dirtyFields);
+                    });
+                  }
+                }}
+                color='error'>
+                Auto Filled
+              </Button>
             </form>
           </Grid>
         </Grid>

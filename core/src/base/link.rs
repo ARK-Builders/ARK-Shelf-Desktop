@@ -12,6 +12,10 @@ pub struct Link {
     desc: String,
     url: Url,
 
+    // Only shared on desktop
+    // Surely it is little bit hack but we need to share the item between Rust and JS, so we have to bypass it
+    // with such a hacky way.
+    #[serde(skip_serializing_if = "Option::is_none")]
     created_time: Option<std::time::SystemTime>,
 }
 
@@ -42,7 +46,10 @@ impl Link {
         s.finish().to_string()
     }
     /// Write zipped file to path
-    pub async fn write_to_path(&self, path: PathBuf) {
+    ///
+    /// Note that the `created_time` field will be omitted, in order to avoid confliction between desktop and mobile.
+    pub async fn write_to_path(&mut self, path: PathBuf) {
+        self.created_time = None;
         let j = serde_json::to_string(self).unwrap();
         let link_file = File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(link_file);
@@ -56,7 +63,7 @@ impl Link {
             .await
             .unwrap_or_default();
         let image_data = preview_data.fetch_image().await.unwrap_or_default();
-        zip.start_file("preview.png", options).unwrap();
+        zip.start_file("link.png", options).unwrap();
         zip.write(&image_data).unwrap();
         zip.finish().unwrap();
     }
@@ -68,7 +75,7 @@ impl Link {
         let scraper = reqwest::get(url.into()).await?.text().await?;
         let html = Html::parse_document(&scraper.as_str());
         Ok(OpenGraph {
-            title: select_og(&html, OpenGraphTag::Title),
+            title: select_og(&html, OpenGraphTag::Title).or(select_title(&html)),
             description: select_og(&html, OpenGraphTag::Description),
             url: select_og(&html, OpenGraphTag::Url),
             image: select_og(&html, OpenGraphTag::Image),
@@ -85,6 +92,16 @@ fn select_og(html: &Html, tag: OpenGraphTag) -> Option<String> {
         if let Some(value) = element.value().attr("content") {
             return Some(value.to_string());
         }
+    }
+
+    None
+}
+
+fn select_title(html: &Html) -> Option<String> {
+    let selector = Selector::parse("title").unwrap();
+
+    if let Some(element) = html.select(&selector).next() {
+        return Some(element.value().name().to_string());
     }
 
     None

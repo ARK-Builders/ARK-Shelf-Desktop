@@ -28,7 +28,7 @@ async fn create_link(
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
     };
-    let link = Link::new(title, desc, url);
+    let mut link = Link::new(title, desc, url);
     let name = format!("{}.link", link.format_name());
     dbg!(&name);
     link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)))
