@@ -75,13 +75,11 @@ const Home = () => {
   const [scores, setScores] = useState<LinkScoreMap[]>([]);
 
   const {
-    register,
     handleSubmit,
     reset,
     setValue,
     getValues,
     control,
-    getFieldState,
     formState: { dirtyFields, isDirty },
   } = useForm<LinkInfo>();
   const [page, setPage] = useState(0);
