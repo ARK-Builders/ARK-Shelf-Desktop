@@ -2,6 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::{collections::hash_map::DefaultHasher, fmt};
 use std::{fs::File, io::Write, path::PathBuf};
 
+use reqwest::header::HeaderValue;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -72,11 +73,23 @@ impl Link {
     where
         S: Into<String>,
     {
-        let scraper = reqwest::get(url.into()).await?.text().await?;
+        let mut header = reqwest::header::HeaderMap::new();
+        header.insert(
+            "User-Agent",
+            HeaderValue::from_static(
+                "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+            ),
+        );
+        let client = reqwest::Client::builder()
+            .default_headers(header)
+            .build()
+            .unwrap();
+        let scraper = client.get(url.into()).send().await?.text().await?;
         let html = Html::parse_document(&scraper.as_str());
+        let title = select_og(&html, OpenGraphTag::Title).or(select_title(&html));
         Ok(OpenGraph {
-            title: select_og(&html, OpenGraphTag::Title).or(select_title(&html)),
-            description: select_og(&html, OpenGraphTag::Description),
+            title,
+            description: select_og(&html, OpenGraphTag::Description).or(select_desc(&html)),
             url: select_og(&html, OpenGraphTag::Url),
             image: select_og(&html, OpenGraphTag::Image),
             object_type: select_og(&html, OpenGraphTag::Type),
@@ -96,12 +109,21 @@ fn select_og(html: &Html, tag: OpenGraphTag) -> Option<String> {
 
     None
 }
-
-fn select_title(html: &Html) -> Option<String> {
-    let selector = Selector::parse("title").unwrap();
+fn select_desc(html: &Html) -> Option<String> {
+    let selector = Selector::parse("meta[name=\"description\"]").unwrap();
 
     if let Some(element) = html.select(&selector).next() {
-        return Some(element.value().name().to_string());
+        if let Some(value) = element.value().attr("content") {
+            return Some(value.to_string());
+        }
+    }
+
+    None
+}
+fn select_title(html: &Html) -> Option<String> {
+    let selector = Selector::parse("title").unwrap();
+    if let Some(element) = html.select(&selector).next() {
+        return element.text().next().map(|x| x.to_string());
     }
 
     None

@@ -88,6 +88,7 @@ const Home = () => {
   console.log(linkInfos);
   console.log('scores:', scores);
   const createLink: SubmitHandler<LinkInfo> = (data) => {
+    data.desc = data.desc ?? '';
     invoke('create_link', {
       ...data,
     }).then(() => {
@@ -411,16 +412,24 @@ const Home = () => {
               <Button type='submit'>Create</Button>
               <Button
                 onClick={() => {
-                  if (isDirty && !dirtyFields.name && !dirtyFields.title) {
+                  if (isDirty && dirtyFields.url) {
                     let url = getValues('url');
                     invoke('generate_link_preview', {
                       url: url.toString(),
-                    }).then((val) => {
-                      let data = val as OpenGraph;
-                      setValue('title', data.title, { shouldDirty: true });
-                      setValue('desc', data.description, { shouldDirty: true });
-                      console.log(dirtyFields);
-                    });
+                    })
+                      .then((val) => {
+                        let data = val as OpenGraph;
+                        console.log(data);
+                        if (!data.title) {
+                          toast('Failed to fetch website data.');
+                        }
+                        setValue('title', data.title, { shouldDirty: true });
+                        setValue('desc', data.description, {
+                          shouldDirty: true,
+                        });
+                        console.log(dirtyFields);
+                      })
+                      .catch((e) => console.log(e));
                   }
                 }}
                 color='error'>
