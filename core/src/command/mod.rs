@@ -6,6 +6,7 @@ use std::{
     thread::sleep,
     time::Duration,
 };
+use serde::{Serialize};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
@@ -28,14 +29,15 @@ async fn create_link(
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
     };
-    let mut link = Link::new(title, desc, url);
+    let mut link = arklib::link::Link::new(title, desc, url);
     let name = format!("{}.link", link.format_name());
     dbg!(&name);
-    link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)))
+    link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)), true)
         .await;
     sleep(Duration::from_millis(305));
     Ok(())
 }
+
 
 #[tauri::command(async)]
 /// Remove a `.link` from directory
@@ -106,12 +108,32 @@ fn set_scores(
     Ok(())
 }
 
+/// Wrapper around the arklib::link::Link struct.
+#[derive(Debug, Serialize)]
+pub struct LinkWrapper{
+    title: String,
+    desc: String,
+    url: Url,
+    
+    // Only shared on desktop
+    #[serde(skip_serializing_if = "Option::is_none")]
+    created_time: Option<std::time::SystemTime>,
+}
+
 #[tauri::command(async)]
 /// Read data from `.link` file
-fn read_link(name: String, state: tauri::State<Cli>) -> Link {
-    let link = Link::from(PathBuf::from(format!("{}/{}", &state.path, name)));
+fn read_link(name: String, state: tauri::State<Cli>) -> LinkWrapper {
+    let file_path = PathBuf::from(format!("{}/{}", &state.path, name));
+    let link = Link::from(file_path.to_owned());
+    let file = File::open(file_path.to_owned()).unwrap();
+    let created_time = file.metadata().unwrap().created().unwrap();
     // dbg!(&link);
-    return link;
+    LinkWrapper {
+        created_time: Some(created_time),
+        title: link.title,
+        desc: link.desc,
+        url: link.url,
+    }
 }
 
 pub fn set_command<R: Runtime>(builder: Builder<R>) -> Builder<R> {

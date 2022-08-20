@@ -1,7 +1,6 @@
-mod link;
 use std::{fs::File, path::Path};
 
-pub use link::{Link, OpenGraph};
+pub use arklib::link::{Link, OpenGraph};
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
 #[derive(Debug, Serialize, Deserialize)]
