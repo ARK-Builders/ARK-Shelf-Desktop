@@ -43,8 +43,7 @@ impl Score {
             arklib::id::ResourceId::compute(
                 File::open(&path).unwrap().metadata().unwrap().len(),
                 path,
-            )
-            .crc32
+            ).unwrap().crc32
         )
     }
     /// Parse scores from string.

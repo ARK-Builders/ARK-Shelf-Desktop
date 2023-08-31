@@ -6,7 +6,7 @@ use std::{
     thread::sleep,
     time::Duration,
 };
-use serde::{Serialize};
+use serde::Serialize;
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
@@ -29,15 +29,14 @@ async fn create_link(
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
     };
-    let mut link = arklib::link::Link::new(title, desc, url);
-    let name = format!("{}.link", link.format_name());
+    let mut link = arklib::link::Link::new(url.clone(), title, Some(desc));
+    let domain = url.domain().unwrap_or("no-domain");
+    let name = format!("{}-{}.link", domain, link.id().unwrap().crc32);
+    link.write_to_path(&state.path, &name, true).await.unwrap();
     dbg!(&name);
-    link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)), true)
-        .await;
     sleep(Duration::from_millis(305));
     Ok(())
 }
-
 
 #[tauri::command(async)]
 /// Remove a `.link` from directory
@@ -63,8 +62,8 @@ fn get_fs_links() -> Vec<DirEntry> {
         .collect::<Vec<DirEntry>>()
 }
 
-#[tauri::command(async)]
 /// Read names of `.link` in user specific directory
+#[tauri::command(async)]
 fn read_link_list() -> Vec<String> {
     let mut path_list = vec![];
     for item in get_fs_links() {
@@ -115,23 +114,24 @@ pub struct LinkWrapper{
     desc: String,
     url: Url,
     
-    // Only shared on desktop
+    /// Only shared on desktop
     #[serde(skip_serializing_if = "Option::is_none")]
     created_time: Option<std::time::SystemTime>,
 }
 
-#[tauri::command(async)]
 /// Read data from `.link` file
+#[tauri::command(async)]
 fn read_link(name: String, state: tauri::State<Cli>) -> LinkWrapper {
     let file_path = PathBuf::from(format!("{}/{}", &state.path, name));
-    let link = Link::from(file_path.to_owned());
+    dbg!(&file_path);
+    let link = Link::load(&state.path, &name).unwrap();
     let file = File::open(file_path.to_owned()).unwrap();
     let created_time = file.metadata().unwrap().created().unwrap();
-    // dbg!(&link);
+    dbg!(&link);
     LinkWrapper {
         created_time: Some(created_time),
-        title: link.title,
-        desc: link.desc,
+        title: link.meta.title,
+        desc: link.meta.desc.unwrap_or("".into()),
         url: link.url,
     }
 }
