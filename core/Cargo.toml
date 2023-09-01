@@ -11,7 +11,7 @@ rust-version = "1.57"
 tauri-build = { version = "1.0.3", features = [] }
 
 [dependencies]
-arklib = { git = "https://github.com/hhio618/arklib" }
+arklib = { git = "https://github.com/ARK-Builders/arklib", rev = "868f4586ddc62c8f438a2cd8ddd0d527f3af1452" }
 clap = { version = "3.2.8", features = ["derive"] }
 home = "0.5.3"
 notify = "4.0.17"
