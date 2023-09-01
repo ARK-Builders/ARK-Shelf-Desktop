@@ -37,3 +37,4 @@ yarn-error.log*
 *.link
 // Debug settings
 .vscode/*
+core/.ark/*

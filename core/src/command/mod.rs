@@ -32,8 +32,12 @@ async fn create_link(
     let mut link = arklib::link::Link::new(url.clone(), title, Some(desc));
     let domain = url.domain().unwrap_or("no-domain");
     let name = format!("{}-{}.link", domain, link.id().unwrap().crc32);
-    link.write_to_path(&state.path, &name, true).await.unwrap();
+    dbg!(&state);
+    dbg!(&ARK_SHELF_WORKING_DIR.as_path());
     dbg!(&name);
+    let path = ARK_SHELF_WORKING_DIR.as_path().join(name);
+    // TODO: Add root argument
+    link.write_to_path(PathBuf::from(""), path, true).await.unwrap();
     sleep(Duration::from_millis(305));
     Ok(())
 }
@@ -124,7 +128,9 @@ pub struct LinkWrapper{
 fn read_link(name: String, state: tauri::State<Cli>) -> LinkWrapper {
     let file_path = PathBuf::from(format!("{}/{}", &state.path, name));
     dbg!(&file_path);
-    let link = Link::load(&state.path, &name).unwrap();
+    let path = ARK_SHELF_WORKING_DIR.as_path().join(name);
+    // TODO: Add root argument
+    let link = Link::load(PathBuf::from(""), path).unwrap();
     let file = File::open(file_path.to_owned()).unwrap();
     let created_time = file.metadata().unwrap().created().unwrap();
     dbg!(&link);
