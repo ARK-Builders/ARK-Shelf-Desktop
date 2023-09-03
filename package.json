@@ -3,7 +3,7 @@
   "private": "true",
   "scripts": {
     "tauri": "tauri",
-    "dev": "cd app && BROWSER=none craco start",
+    "dev": "cd app && set BROWSER=none && craco start",
     "build": "cd app && craco build"
   },
   "workspaces": [
