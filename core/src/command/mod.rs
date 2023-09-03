@@ -1,3 +1,5 @@
+use arklib::id::ResourceId;
+use serde::Serialize;
 use std::{
     fs::{self, File},
     io::Write,
@@ -6,10 +8,9 @@ use std::{
     thread::sleep,
     time::Duration,
 };
-use serde::{Serialize};
 
 use crate::{
-    base::{Link, OpenGraph, Score, Scores},
+    base::{Link, Metadata, OpenGraph, Score, Scores},
     Cli, ARK_SHELF_WORKING_DIR, SCORES_PATH,
 };
 
@@ -29,15 +30,19 @@ async fn create_link(
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
     };
-    let mut link = arklib::link::Link::new(title, desc, url);
+    let mut link = arklib::link::Link::new(title.clone(), desc, url);
     let name = format!("{}.link", link.format_name());
     dbg!(&name);
-    link.write_to_path(PathBuf::from(format!("{}/{}", &state.path, name)), true)
-        .await;
+    println!("Path: {:?}\n name: {name} with title {title}", state.path);
+    link.write_to_path(
+        PathBuf::from(&state.path),
+        PathBuf::from(format!("{}/{}", &state.path, name)),
+        true,
+    )
+    .await;
     sleep(Duration::from_millis(305));
     Ok(())
 }
-
 
 #[tauri::command(async)]
 /// Remove a `.link` from directory
@@ -110,29 +115,42 @@ fn set_scores(
 
 /// Wrapper around the arklib::link::Link struct.
 #[derive(Debug, Serialize)]
-pub struct LinkWrapper{
-    title: String,
-    desc: String,
+pub struct LinkWrapper {
+    title: Option<String>,
+    desc: Option<String>,
     url: Url,
-    
+
     // Only shared on desktop
     #[serde(skip_serializing_if = "Option::is_none")]
     created_time: Option<std::time::SystemTime>,
 }
 
-#[tauri::command(async)]
+#[tauri::command]
 /// Read data from `.link` file
-fn read_link(name: String, state: tauri::State<Cli>) -> LinkWrapper {
+async fn read_link(name: String, state: tauri::State<'_, Cli>) -> Result<LinkWrapper, ()> {
     let file_path = PathBuf::from(format!("{}/{}", &state.path, name));
-    let link = Link::from(file_path.to_owned());
+    let mut link = Link::from(file_path.to_owned());
+    let resource_id = ResourceId::compute_bytes(link.url.as_str().as_bytes());
+    link.load_metadata(&state.path, resource_id);
     let file = File::open(file_path.to_owned()).unwrap();
     let created_time = file.metadata().unwrap().created().unwrap();
     // dbg!(&link);
-    LinkWrapper {
-        created_time: Some(created_time),
-        title: link.title,
-        desc: link.desc,
-        url: link.url,
+    let created_time = Some(created_time);
+    let url = link.url;
+    if let Some(Metadata { title, desc }) = link.metadata {
+        Ok(LinkWrapper {
+            created_time,
+            title: Some(title),
+            desc: Some(desc),
+            url,
+        })
+    } else {
+        Ok(LinkWrapper {
+            created_time,
+            title: None,
+            desc: None,
+            url,
+        })
     }
 }
 
