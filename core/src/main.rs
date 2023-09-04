@@ -34,7 +34,7 @@ lazy_static! {
 #[derive(Parser, Default, Debug)]
 #[clap(
     name = "ARK Shelf Desktop",
-    about = "Desktop Version of ARK Shelf, put you bookmarks when surfing."
+    about = "Desktop Version of ARK Shelf, save your bookmarks when surfing."
 )]
 struct Cli {
     #[clap(
@@ -46,7 +46,7 @@ struct Cli {
     path: String,
 }
 
-// Initialize file watcher.
+/// Initialize file watcher.
 fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
     thread::spawn(move || {
         let (tx, rx) = channel();

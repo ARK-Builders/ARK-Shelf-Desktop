@@ -17,8 +17,8 @@ use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
-#[tauri::command(async)]
 /// Create a `.link`
+#[tauri::command(async)]
 async fn create_link(
     title: String,
     desc: String,
@@ -42,13 +42,14 @@ async fn create_link(
     Ok(())
 }
 
-#[tauri::command(async)]
 /// Remove a `.link` from directory
+#[tauri::command(async)]
 fn delete_link(name: String, state: tauri::State<Cli>) {
     fs::remove_file(format!("{}/{}", &state.path, name)).expect("cannot remove the link");
     sleep(Duration::from_millis(305));
 }
 
+/// Get all `.link` files in the working dir 
 fn get_fs_links() -> Vec<DirEntry> {
     WalkDir::new(ARK_SHELF_WORKING_DIR.as_path())
         .max_depth(1)

@@ -3,6 +3,7 @@ use std::{fs::File, path::Path};
 pub use arklib::link::{Link, OpenGraph};
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LinkScoreMap {
     pub name: String,
@@ -26,7 +27,10 @@ pub enum Mode {
     /// Sorting by score
     Score,
 }
+
+/// All scores of current `.links`
 pub type Scores = Vec<Score>;
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, PartialOrd, Clone)]
 pub struct Score {
     pub name: String,
@@ -46,6 +50,7 @@ impl Score {
             ).unwrap().crc32
         )
     }
+
     /// Parse scores from string.
     ///
     /// Note that the name in each item is set to default `String::new()`, since we can't parse name from crc32.
@@ -66,6 +71,7 @@ impl Score {
             .collect::<Vec<Score>>();
         splited
     }
+
     /// Parse the given string into scores and merge scores by reading all `.link` in the given path.
     ///
     /// Scores name will be filled with `.link` name during merging.
@@ -74,6 +80,7 @@ impl Score {
         let merged_scores = Score::merge(splited, path);
         merged_scores
     }
+
     /// Merge scores with reading given path.
     ///
     /// Scores name will be filled with `.link` name during merging.
@@ -117,12 +124,14 @@ impl Score {
             .collect::<Scores>();
         merged_scores
     }
+
     pub fn format(hash: String, value: i64) -> String {
         if value == 0 {
             return String::from(format!("{hash}: "));
         }
         String::from(format!("{hash}: {value}"))
     }
+
     pub fn into_lines(arr: Scores) -> String {
         let mut lines = arr
             .iter()
