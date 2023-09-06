@@ -4,7 +4,8 @@
   "scripts": {
     "tauri": "tauri",
     "dev": "cd app && set BROWSER=none && craco start",
-    "build": "cd app && craco build"
+    "build": "cd app && craco build",
+    "clean": "cd core && cargo clean"
   },
   "workspaces": [
     "app"
