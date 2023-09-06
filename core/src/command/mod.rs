@@ -32,9 +32,6 @@ async fn create_link(
     let mut link = arklib::link::Link::new(url.clone(), title, Some(desc));
     let domain = url.domain().unwrap_or("no-domain");
     let name = format!("{}-{}.link", domain, link.id().unwrap().crc32);
-    dbg!(&state);
-    dbg!(&ARK_SHELF_WORKING_DIR.as_path());
-    dbg!(&name);
     let path = ARK_SHELF_WORKING_DIR.as_path().join(name);
     // TODO: Add root argument
     link.write_to_path(PathBuf::from(""), path, true).await.unwrap();
@@ -72,11 +69,9 @@ fn get_fs_links() -> Vec<DirEntry> {
 fn read_link_list() -> Vec<String> {
     let mut path_list = vec![];
     for item in get_fs_links() {
-        dbg!(&item);
         let file_name = item.file_name().to_str().unwrap().to_string();
         path_list.push(file_name);
     }
-    dbg!(&path_list);
     path_list
 }
 
@@ -100,7 +95,6 @@ fn set_scores(
     state_scores: tauri::State<Arc<Mutex<Scores>>>,
 ) -> Result<(), String> {
     *state_scores.lock().unwrap() = scores.clone();
-    dbg!(&scores);
     let mut scores_file = File::options()
         .write(true)
         .truncate(true)
@@ -128,13 +122,11 @@ pub struct LinkWrapper{
 #[tauri::command(async)]
 fn read_link(name: String, state: tauri::State<Cli>) -> LinkWrapper {
     let file_path = PathBuf::from(format!("{}/{}", &state.path, name));
-    dbg!(&file_path);
     let path = ARK_SHELF_WORKING_DIR.as_path().join(name);
     // TODO: Add root argument
     let link = Link::load(PathBuf::from(""), path).unwrap();
     let file = File::open(file_path.to_owned()).unwrap();
     let created_time = file.metadata().unwrap().created().unwrap();
-    dbg!(&link);
     LinkWrapper {
         created_time: Some(created_time),
         title: link.meta.title,

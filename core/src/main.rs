@@ -65,7 +65,6 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                             value: 0,
                         };
                         scores.lock().unwrap().push(score.clone());
-                        dbg!(&scores);
                         let mut score_file = File::options()
                             .write(true)
                             .append(true)
@@ -77,7 +76,6 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                     DebouncedEvent::NoticeRemove(path) => {
                         let removed_link_name =
                             path.file_name().unwrap().to_string_lossy().to_string();
-                        dbg!(&removed_link_name);
                         let filtered_scores = scores
                             .lock()
                             .unwrap()
@@ -87,7 +85,6 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                             .collect::<Vec<_>>();
 
                         *scores.lock().unwrap() = filtered_scores.clone();
-                        dbg!(&scores);
 
                         let mut buf = String::new();
                         let mut scores_file = File::options()
@@ -142,7 +139,6 @@ fn main() {
         scores = Score::merge(scores, ARK_SHELF_WORKING_DIR.as_path());
     }
 
-    dbg!(&scores);
 
     let mut scores_file = File::options()
         .write(true)

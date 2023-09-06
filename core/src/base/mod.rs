@@ -61,7 +61,6 @@ impl Score {
             .map(|val| {
                 let mapped = val.split(": ").collect::<Vec<&str>>();
 
-                dbg!(&mapped);
                 Score {
                     name: String::new(),
                     hash: mapped[0].to_string(),
