@@ -1,16 +1,12 @@
-use arklib::id::ResourceId;
 use serde::Serialize;
 use std::{
     fs::{self, File},
     io::Write,
-    path::PathBuf,
     sync::{Arc, Mutex},
-    thread::sleep,
-    time::Duration,
 };
 
 use crate::{
-    base::{Link, Metadata, OpenGraph, Score, Scores},
+    base::{Link, OpenGraph, Score, Scores},
     Cli, ARK_SHELF_WORKING_DIR, SCORES_PATH,
 };
 
@@ -18,11 +14,11 @@ use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
-#[tauri::command(async)]
+#[tauri::command]
 /// Create a `.link`
 async fn create_link(
     title: String,
-    desc: String,
+    desc: Option<String>,
     url: String,
     state: tauri::State<'_, Cli>,
 ) -> Result<(), String> {
@@ -30,25 +26,22 @@ async fn create_link(
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
     };
-    let mut link = arklib::link::Link::new(title.clone(), desc, url);
-    let name = format!("{}.link", link.format_name());
-    dbg!(&name);
-    println!("Path: {:?}\n name: {name} with title {title}", state.path);
-    link.write_to_path(
-        PathBuf::from(&state.path),
-        PathBuf::from(format!("{}/{}", &state.path, name)),
-        true,
-    )
-    .await;
-    sleep(Duration::from_millis(305));
+    let ressource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
+        .expect("Error compute ressource from url");
+    let domain = url.domain().expect("Url has no domain");
+    let path = format!("{}/{domain}-{}.link", &state.path, ressource.crc32);
+    let mut link = Link::new(url, title, desc);
+    link.write_to_path(&state.path, &path, true)
+        .await
+        .expect("Custom error type needed");
     Ok(())
 }
 
-#[tauri::command(async)]
+#[tauri::command]
 /// Remove a `.link` from directory
-fn delete_link(name: String, state: tauri::State<Cli>) {
+async fn delete_link(name: String, state: tauri::State<'_, Cli>) -> Result<(), ()> {
     fs::remove_file(format!("{}/{}", &state.path, name)).expect("cannot remove the link");
-    sleep(Duration::from_millis(305));
+    Ok(())
 }
 
 fn get_fs_links() -> Vec<DirEntry> {
@@ -68,9 +61,9 @@ fn get_fs_links() -> Vec<DirEntry> {
         .collect::<Vec<DirEntry>>()
 }
 
-#[tauri::command(async)]
+#[tauri::command]
 /// Read names of `.link` in user specific directory
-fn read_link_list() -> Vec<String> {
+async fn read_link_list() -> Vec<String> {
     let mut path_list = vec![];
     for item in get_fs_links() {
         dbg!(&item);
@@ -81,24 +74,24 @@ fn read_link_list() -> Vec<String> {
     path_list
 }
 
-#[tauri::command(async)]
+#[tauri::command]
 async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
     Link::get_preview(url).await.map_err(|e| e.to_string())
 }
 
 /// Get the score list
-#[tauri::command(async)]
-fn get_scores(scores: tauri::State<Arc<Mutex<Scores>>>) -> Result<Scores, String> {
+#[tauri::command]
+async fn get_scores(scores: tauri::State<'_, Arc<Mutex<Scores>>>) -> Result<Scores, String> {
     Ok(scores.lock().unwrap().clone())
 }
 
 /// Set scores
 ///
 /// Only affected scores file.
-#[tauri::command(async)]
-fn set_scores(
+#[tauri::command]
+async fn set_scores(
     scores: Scores,
-    state_scores: tauri::State<Arc<Mutex<Scores>>>,
+    state_scores: tauri::State<'_, Arc<Mutex<Scores>>>,
 ) -> Result<(), String> {
     *state_scores.lock().unwrap() = scores.clone();
     dbg!(&scores);
@@ -116,11 +109,10 @@ fn set_scores(
 /// Wrapper around the arklib::link::Link struct.
 #[derive(Debug, Serialize)]
 pub struct LinkWrapper {
-    title: Option<String>,
+    title: String,
     desc: Option<String>,
     url: Url,
-
-    // Only shared on desktop
+    // // Only shared on desktop
     #[serde(skip_serializing_if = "Option::is_none")]
     created_time: Option<std::time::SystemTime>,
 }
@@ -128,30 +120,19 @@ pub struct LinkWrapper {
 #[tauri::command]
 /// Read data from `.link` file
 async fn read_link(name: String, state: tauri::State<'_, Cli>) -> Result<LinkWrapper, ()> {
-    let file_path = PathBuf::from(format!("{}/{}", &state.path, name));
-    let mut link = Link::from(file_path.to_owned());
-    let resource_id = ResourceId::compute_bytes(link.url.as_str().as_bytes());
-    link.load_metadata(&state.path, resource_id);
-    let file = File::open(file_path.to_owned()).unwrap();
-    let created_time = file.metadata().unwrap().created().unwrap();
-    // dbg!(&link);
-    let created_time = Some(created_time);
-    let url = link.url;
-    if let Some(Metadata { title, desc }) = link.metadata {
-        Ok(LinkWrapper {
-            created_time,
-            title: Some(title),
-            desc: Some(desc),
-            url,
-        })
-    } else {
-        Ok(LinkWrapper {
-            created_time,
-            title: None,
-            desc: None,
-            url,
-        })
-    }
+    let file_path = format!("{}/{name}", &state.path);
+    let link = Link::load(&state.path, &file_path).expect(&format!("Error loading {file_path}"));
+    let meta = fs::metadata(&file_path).expect("Error loading metadata");
+    let created_time = match meta.created() {
+        Ok(time) => Some(time),
+        Err(_) => None,
+    };
+    Ok(LinkWrapper {
+        title: link.meta.title,
+        desc: link.meta.desc,
+        url: link.url,
+        created_time,
+    })
 }
 
 pub fn set_command<R: Runtime>(builder: Builder<R>) -> Builder<R> {

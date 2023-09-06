@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::path::Path;
 
 pub use arklib::link::{Link, Metadata, OpenGraph};
 use serde::{Deserialize, Serialize};
@@ -37,15 +37,16 @@ pub struct Score {
 }
 
 impl Score {
-    pub fn calc_hash(path: impl AsRef<Path>) -> String {
-        format!(
-            "{:x}",
-            arklib::id::ResourceId::compute(
-                File::open(&path).unwrap().metadata().unwrap().len(),
-                path,
-            )
-            .crc32
-        )
+    pub fn calc_hash(path: impl AsRef<Path>) -> Result<String, std::io::Error> {
+        let file_metadata = std::fs::metadata(&path)?;
+        let ressource =
+            arklib::id::ResourceId::compute(file_metadata.len(), path).map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Error computing RessourceId",
+                )
+            })?;
+        Ok(ressource.crc32.to_string())
     }
     /// Parse scores from string.
     ///
@@ -99,7 +100,7 @@ impl Score {
             .iter()
             .map(|entry| Score {
                 name: entry.file_name().to_string_lossy().to_string(),
-                hash: Score::calc_hash(entry.path()),
+                hash: Score::calc_hash(entry.path()).expect("Error computing hash"),
                 // Default to 0
                 value: 0,
             })

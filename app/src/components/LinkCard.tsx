@@ -101,8 +101,8 @@ export const LinkListItem = ({
               OPEN
             </Button>
             <Button
-              onClick={() => {
-                invoke("delete_link", {
+              onClick={async () => {
+                await invoke("delete_link", {
                   name: link.name,
                 });
                 refresh();
