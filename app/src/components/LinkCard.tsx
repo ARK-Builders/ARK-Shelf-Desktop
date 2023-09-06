@@ -49,6 +49,7 @@ export const LinkListItem = ({
           <Typography variant="body2">
             {previewInfo?.title ?? "Preview may not available at the moment"}
           </Typography>
+          {link.desc && <Typography>{link.desc}</Typography>}
           <img
             loading="lazy"
             alt="preview"
