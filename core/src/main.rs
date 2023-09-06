@@ -61,7 +61,7 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                     DebouncedEvent::Create(path) => {
                         let score = Score {
                             name: path.file_name().unwrap().to_string_lossy().to_string(),
-                            hash: Score::calc_hash(path),
+                            hash: Score::calc_hash(path).expect("Error computing hash"),
                             value: 0,
                         };
                         scores.lock().unwrap().push(score.clone());

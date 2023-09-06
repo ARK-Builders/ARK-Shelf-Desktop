@@ -45,8 +45,6 @@ const Home = () => {
   const itemPerPage = 5;
   const pageCount = Math.ceil(linkInfos.length / itemPerPage);
   const createLink: SubmitHandler<LinkInfo> = async (data) => {
-    data.desc = data.desc ?? "";
-    console.log("Submit", { data });
     await invoke("create_link", {
       ...data,
     });

@@ -26,7 +26,7 @@ tauri-macros = "1.0.3"
 walkdir = "2.3.2"
 anyhow = "1.0.58"
 reqwest = "0.11.11"
-arklib = { git = "https://github.com/hhio618/arklib", rev = "ad81445" }
+arklib = { git = "https://github.com/ARK-Builders/arklib", rev = "51cfa7d6" }
 notify = "4.0.17"
 tokio = { version = "1.19.2", features = ["full"] }
 crossbeam-channel = "0.5.5"
