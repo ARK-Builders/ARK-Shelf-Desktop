@@ -26,10 +26,10 @@ async fn create_link(
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
     };
-    let ressource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
-        .expect("Error compute ressource from url");
+    let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
+        .expect("Error compute resource from url");
     let domain = url.domain().expect("Url has no domain");
-    let path = format!("{}/{domain}-{}.link", &state.path, ressource.crc32);
+    let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
     let mut link = Link::new(url, title, desc);
     link.write_to_path(&state.path, &path, true)
         .await
