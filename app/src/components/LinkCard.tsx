@@ -84,7 +84,9 @@ export const LinkListItem = ({
             .toDate()
             .toLocaleString()}
         ></ListItemText>
-
+        <ListItemText
+          primary={link.desc && <Typography variant="body2">{link.desc}</Typography>}
+        ></ListItemText>
         <Grid container>
           <Grid item container m="auto">
             <Button
