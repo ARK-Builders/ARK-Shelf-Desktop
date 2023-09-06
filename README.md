@@ -77,6 +77,11 @@ And to get a production build, use this command.
 yarn tauri build
 ```
 
+To clean the cargo directory: 
+```
+yarn clean
+```
+
 ## Options
 
 ```bash

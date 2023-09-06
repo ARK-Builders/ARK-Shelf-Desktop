@@ -23,8 +23,6 @@ use tauri::Manager;
 
 lazy_static! {
     pub static ref ARK_SHELF_WORKING_DIR: PathBuf = PathBuf::from(Cli::parse().path);
-    pub static ref ARK_SHELF_DATA_PATH: PathBuf =
-        PathBuf::from(Cli::parse().path).join(".ark").join("shelf");
     pub static ref SCORES_PATH: PathBuf = PathBuf::from(Cli::parse().path)
         .join(".ark")
         .join("shelf")
@@ -41,7 +39,7 @@ struct Cli {
         short,
         long,
         help = "Path to store .link file", 
-        default_value_t = format!("{}/ark-shelf",home_dir().unwrap().display())
+        default_value_t = format!("{}/.ark-shelf",home_dir().unwrap().display())
     )]
     path: String,
 }
@@ -120,10 +118,8 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
 fn main() {
     let cli = Cli::parse();
 
-    std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.as_path()).unwrap();
-    std::fs::create_dir_all(ARK_SHELF_DATA_PATH.as_path()).unwrap();
+    std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.as_path().join(".ark").join("shelf")).unwrap();
     lazy_static::initialize(&ARK_SHELF_WORKING_DIR);
-    lazy_static::initialize(&ARK_SHELF_DATA_PATH);
     lazy_static::initialize(&SCORES_PATH);
     // Check if the scores file is existed, otherwise create one.
     let mut scores_file = File::options()
