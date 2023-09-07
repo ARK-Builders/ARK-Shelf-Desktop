@@ -1,10 +1,10 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "build": {
-    "beforeBuildCommand": "yarn build",
-    "beforeDevCommand": "yarn dev",
-    "devPath": "http://localhost:3000/",
-    "distDir": "../app/build",
+    "beforeBuildCommand": "pnpm vite build",
+    "beforeDevCommand": "pnpm vite dev",
+    "devPath": "http://localhost:1420/",
+    "distDir": "../dist",
     "withGlobalTauri": true
   },
   "package": {
