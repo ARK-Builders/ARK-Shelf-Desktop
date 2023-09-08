@@ -1,5 +1,23 @@
 <script lang="ts">
-  export let description: string;
+    export let description: string | undefined;
+
+    let show = true;
 </script>
 
-<p>{description}</p>
+<div class="flex items-start pb-2">
+    <p class="grow">
+        {#if show && description}
+            {description}
+        {/if}
+    </p>
+    {#if description}
+        <button
+            class="shrink-0 pl-2"
+            on:click={() => {
+                show = !show;
+            }}
+        >
+            {show ? 'Hide' : 'Show'}</button
+        >
+    {/if}
+</div>
