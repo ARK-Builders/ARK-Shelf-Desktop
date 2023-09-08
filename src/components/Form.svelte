@@ -21,7 +21,7 @@
 </script>
 
 <form
-  class="flex flex-col gap-3 pr-3"
+  class="sticky top-0 flex flex-col space-y-2"
   on:submit|preventDefault={async e => {
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title')?.toString() ?? '';
