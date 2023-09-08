@@ -1,5 +1,5 @@
-import { writable } from "svelte/store";
-import type { LinkScoreMap, LinkInfo } from "./types";
+import { writable } from 'svelte/store';
+import type { LinkInfo, LinkScoreMap } from './types';
 
-export const linksInfos = writable<LinkInfo[]>([])
-export const scores = writable<LinkScoreMap[]>([])
+export const linksInfos = writable<LinkInfo[]>([]);
+export const scores = writable<LinkScoreMap[]>([]);

@@ -242,7 +242,7 @@ const Home = () => {
                 onClick={() => {
                   if (isDirty && dirtyFields.url) {
                     const url = getValues('url');
-                    invoke('generate_link_preview', {
+                    invoke('if', {
                       url: url.toString(),
                     })
                       .then(val => {

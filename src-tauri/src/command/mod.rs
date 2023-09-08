@@ -21,7 +21,7 @@ async fn create_link(
     desc: Option<String>,
     url: String,
     state: tauri::State<'_, Cli>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let url = match Url::parse(url.as_str()) {
         Ok(val) => val,
         Err(e) => return Err(e.to_string()),
@@ -34,7 +34,7 @@ async fn create_link(
     link.write_to_path(&state.path, &path, true)
         .await
         .expect("Custom error type needed");
-    Ok(())
+    Ok(path)
 }
 
 #[tauri::command]

@@ -1,19 +1,19 @@
+import { ArrowDownward, ArrowUpward } from '@mui/icons-material';
 import {
-  ListItem,
-  Grid,
   Button,
-  ListItemText,
-  Typography,
-  Tooltip,
+  Grid,
   IconButton,
-} from "@mui/material";
-import { clipboard, invoke } from "@tauri-apps/api";
-import { open } from "@tauri-apps/api/shell";
-import { LinkInfo, LinkScoreMap, OpenGraph, SortMode } from "../types";
-import { useEffect, useState } from "react";
-import dayjs from "dayjs";
-import { toast } from "react-toastify";
-import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
+  ListItem,
+  ListItemText,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { clipboard, invoke } from '@tauri-apps/api';
+import { open } from '@tauri-apps/api/shell';
+import dayjs from 'dayjs';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import { LinkInfo, LinkScoreMap, OpenGraph, SortMode } from '../types';
 
 interface LinkListItemProps {
   link: LinkInfo;
@@ -34,11 +34,11 @@ export const LinkListItem = ({
 }: LinkListItemProps) => {
   const [previewInfo, setPreviewInfo] = useState<OpenGraph>();
 
-  console.log("Link", { link });
+  console.log('Link', { link });
   useEffect(() => {
-    invoke("generate_link_preview", {
+    invoke('generate_link_preview', {
       url: link.url.toString(),
-    }).then((val) => setPreviewInfo(val as OpenGraph));
+    }).then(val => setPreviewInfo(val as OpenGraph));
   }, [link.url]);
 
   return (
@@ -47,15 +47,10 @@ export const LinkListItem = ({
       title={
         <>
           <Typography variant="body2">
-            {previewInfo?.title ?? "Preview may not available at the moment"}
+            {previewInfo?.title ?? 'Preview may not available at the moment'}
           </Typography>
           {link.desc && <Typography>{link.desc}</Typography>}
-          <img
-            loading="lazy"
-            alt="preview"
-            src={previewInfo?.image}
-            width={250}
-          ></img>
+          <img loading="lazy" alt="preview" src={previewInfo?.image} width={250}></img>
         </>
       }
     >
@@ -63,16 +58,16 @@ export const LinkListItem = ({
         dense
         key={index}
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
         }}
       >
         <ListItemText
           primary={
             <Typography
               sx={{
-                maxWidth: "25rem",
+                maxWidth: '25rem',
               }}
               paragraph
             >
@@ -92,7 +87,7 @@ export const LinkListItem = ({
                 clipboard.writeText(link.url);
               }}
             >
-              {"COPY"}
+              {'COPY'}
             </Button>
             <Button
               onClick={() => {
@@ -103,11 +98,11 @@ export const LinkListItem = ({
             </Button>
             <Button
               onClick={async () => {
-                await invoke("delete_link", {
+                await invoke('delete_link', {
                   name: link.name,
                 });
                 refresh();
-                toast("Link deleted!");
+                toast('Link deleted!');
               }}
               color="error"
             >
@@ -116,17 +111,17 @@ export const LinkListItem = ({
 
             <IconButton
               color="primary"
-              disabled={mode !== "score"}
+              disabled={mode !== 'score'}
               onClick={() => {
                 let arr = Array.from(scores);
-                arr = arr.map((val) => {
+                arr = arr.map(val => {
                   if (val.name === link.name) {
                     val.value += 1;
                   }
                   return val;
                 });
                 setScores(arr);
-                invoke("set_scores", {
+                invoke('set_scores', {
                   scores: arr,
                 }).then(() => refresh());
               }}
@@ -135,10 +130,10 @@ export const LinkListItem = ({
             </IconButton>
             <IconButton
               color="error"
-              disabled={mode !== "score"}
+              disabled={mode !== 'score'}
               onClick={() => {
                 let arr = Array.from(scores);
-                arr = arr.map((val) => {
+                arr = arr.map(val => {
                   if (val.name === link.name) {
                     val.value -= 1;
                   }
@@ -146,7 +141,7 @@ export const LinkListItem = ({
                 });
                 console.log(arr);
                 setScores(arr);
-                invoke("set_scores", {
+                invoke('set_scores', {
                   scores: arr,
                 }).then(() => {
                   refresh();
@@ -157,13 +152,13 @@ export const LinkListItem = ({
             </IconButton>
             <Typography
               variant="body1"
-              my={"auto"}
+              my={'auto'}
               sx={{
-                display: mode === "score" ? "block" : "none",
+                display: mode === 'score' ? 'block' : 'none',
               }}
             >
               Score:
-              {scores.find((val) => val.name === link.name)?.value}
+              {scores.find(val => val.name === link.name)?.value}
             </Typography>
           </Grid>
         </Grid>
