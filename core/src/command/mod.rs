@@ -36,7 +36,6 @@ async fn create_link(
         .expect("Custom error type needed");
     Ok(())
 }
-
 #[tauri::command]
 /// Remove a `.link` from directory
 async fn delete_link(name: String, state: tauri::State<'_, Cli>) -> Result<(), ()> {

@@ -21,6 +21,7 @@ serde = { version = "1.0.138", features = ["derive"] }
 tauri = { version = "1.0.3", features = ["api-all"] }
 url = { version = "2.2.2", features = ["serde"] }
 walkdir = "2.3.2"
+tokio = { version = "1.32.0", features = ["rt"] }
 
 [features]
 # by default Tauri runs in production mode
