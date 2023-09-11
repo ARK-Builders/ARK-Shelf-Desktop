@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api';
-import { type LinkInfo, type OpenGraph, type SortMode } from '../types';
+import type { LinkInfo, LinkScoreMap, OpenGraph, SortMode } from '../types';
 
 export const createLink = async (
     data: Omit<LinkInfo, 'created_timed' | 'score' | 'name'>,
@@ -36,19 +36,30 @@ export const getPreview = async (url: string): Promise<OpenGraph | undefined> =>
     }
 };
 
+const getScores = async () => {
+    try {
+        const scores = await invoke<LinkScoreMap[]>('get_scores');
+        return scores;
+    } catch (_) {
+        return;
+    }
+};
+
 export const readCurrentLinks = async (sortingMode: SortMode) => {
     const names = await invoke<string[]>('read_link_list');
+    const scores = await getScores();
     const linkPromises = names.map(async name => {
         const link = await invoke<Omit<LinkInfo, 'score' | 'name'>>('read_link', {
             name,
         });
-
+        const score = scores?.find(s => s.name === name)?.value ?? 0;
         return {
             ...link,
             name,
-            score: 0,
+            score,
         };
     });
+
     const links = await Promise.all(linkPromises);
     links.sort((a, b) => {
         switch (sortingMode) {
