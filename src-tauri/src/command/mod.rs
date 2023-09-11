@@ -85,6 +85,8 @@ async fn get_scores(scores: tauri::State<'_, Arc<Mutex<Scores>>>) -> Result<Scor
     Ok(scores.lock().unwrap().clone())
 }
 
+
+
 /// Set scores
 ///
 /// Only affected scores file.

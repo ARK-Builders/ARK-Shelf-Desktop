@@ -1,4 +1,7 @@
 <script lang="ts">
+    import Eye from '~icons/mdi/eye';
+    import EyeOff from '~icons/mdi/eye-off';
+
     export let description: string | undefined;
 
     let show = true;
@@ -17,7 +20,11 @@
                 show = !show;
             }}
         >
-            {show ? 'Hide' : 'Show'}</button
-        >
+            {#if show}
+                <Eye />
+            {:else}
+                <EyeOff />
+            {/if}
+        </button>
     {/if}
 </div>

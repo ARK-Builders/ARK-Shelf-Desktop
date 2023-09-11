@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { LinkInfo } from '../types';
+    import type { LinkInfo, LinkScoreMap } from '../types';
     import Description from './Description.svelte';
     import LinkFooter from './LinkFooter.svelte';
     import Title from './Title.svelte';
@@ -30,5 +30,5 @@
     {#if link.created_time}
         <div class="text-xs">{created_time}</div>
     {/if}
-    <LinkFooter name={link.name} url={link.url} />
+    <LinkFooter name={link.name} url={link.url} score={link.score} />
 </div>
