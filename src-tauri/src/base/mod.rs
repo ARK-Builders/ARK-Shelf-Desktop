@@ -27,6 +27,9 @@ pub enum Mode {
     Score,
 }
 pub type Scores = Vec<Score>;
+
+
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, PartialOrd, Clone)]
 pub struct Score {
     pub name: String,
@@ -37,6 +40,17 @@ pub struct Score {
 }
 
 impl Score {
+    pub fn new(url: &str) -> Self {
+        let hash = arklib::id::ResourceId::compute_bytes(url.as_bytes()).unwrap();
+        let hash = format!("{}-{}", hash.crc32, hash.data_size);
+        let name = format!("{}.link", hash);
+        Score {
+            hash,
+            name,
+            value: 0
+        }
+    }
+
     pub fn calc_hash(path: impl AsRef<Path>) -> Result<String, std::io::Error> {
         let file_metadata = std::fs::metadata(&path)?;
         let ressource =
@@ -46,12 +60,12 @@ impl Score {
                     "Error computing RessourceId",
                 )
             })?;
-        Ok(ressource.crc32.to_string())
+        Ok(format!("{}-{}", ressource.crc32, ressource.data_size))
     }
     /// Parse scores from string.
     ///
     /// Note that the name in each item is set to default `String::new()`, since we can't parse name from crc32.
-    pub fn parse(content: String) -> Scores {
+    fn parse(content: String) -> Scores {
         let splited = content
             .split("\n")
             .filter(|val| !val.is_empty())
@@ -79,7 +93,7 @@ impl Score {
     /// Merge scores with reading given path.
     ///
     /// Scores name will be filled with `.link` name during merging.
-    pub fn merge(merge_scores: Scores, path: impl AsRef<Path>) -> Scores {
+    fn merge(merge_scores: Scores, path: impl AsRef<Path>) -> Scores {
         let entrys = WalkDir::new(path)
             .max_depth(1)
             .into_iter()
@@ -119,16 +133,16 @@ impl Score {
             .collect::<Scores>();
         merged_scores
     }
-    pub fn format(hash: String, value: i64) -> String {
+    pub fn format(hash: &str, value: i64) -> String {
         if value == 0 {
             return String::from(format!("{hash}: "));
         }
         String::from(format!("{hash}: {value}"))
     }
-    pub fn into_lines(arr: Scores) -> String {
+    pub fn into_lines(arr: &[Score]) -> String {
         let mut lines = arr
             .iter()
-            .map(|s| Score::format(s.hash.clone(), s.value))
+            .map(|s| Score::format(&s.hash, s.value))
             .collect::<Vec<String>>()
             .join("\n");
         lines.push_str("\n");
@@ -138,6 +152,6 @@ impl Score {
 
 impl ToString for Score {
     fn to_string(&self) -> String {
-        Score::format(self.hash.clone(), self.value)
+        Score::format(&self.hash, self.value)
     }
 }

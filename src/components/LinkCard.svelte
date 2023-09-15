@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { LinkInfo, LinkScoreMap } from '../types';
+    import type { LinkInfo } from '../types';
     import Description from './Description.svelte';
     import LinkFooter from './LinkFooter.svelte';
     import Title from './Title.svelte';
@@ -14,7 +14,7 @@
 
     const displayCreation = (secondesSinceEpoch?: number): string => {
         if (secondesSinceEpoch) {
-            date.setUTCSeconds(secondesSinceEpoch);
+            date.setTime(secondesSinceEpoch * 1000);
         }
         return `${format(date.getDay())}/${format(date.getMonth())}/${date.getFullYear()} ${format(
             date.getHours(),

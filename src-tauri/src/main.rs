@@ -101,7 +101,7 @@ fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
                             .unwrap();
                         if !filtered_scores.is_empty() {
                             merged_scores_file
-                                .write_all(Score::into_lines(filtered_scores).as_bytes())
+                                .write_all(Score::into_lines(&filtered_scores).as_bytes())
                                 .unwrap();
                         }
                     }
@@ -134,9 +134,7 @@ fn main() {
     // Skip if there's no content in the file.
     if !scores_string.is_empty() {
         scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.as_path());
-    } else {
-        scores = Score::merge(scores, ARK_SHELF_WORKING_DIR.as_path());
-    }
+    } 
 
     dbg!(&scores);
 
@@ -147,7 +145,7 @@ fn main() {
         .unwrap();
     // Merge scores item and write to score file.
     scores_file
-        .write_all(Score::into_lines(scores.clone()).as_bytes())
+        .write_all(Score::into_lines(&scores).as_bytes())
         .unwrap();
 
     let builder = tauri::Builder::default();

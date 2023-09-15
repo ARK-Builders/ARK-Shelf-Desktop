@@ -3,28 +3,29 @@
     import { toast } from '@zerodevx/svelte-toast';
     import { deleteLink } from './utils';
     import { linksInfos } from '../store';
-    import Scores from './Scores.svelte';
+    import Score from './Score.svelte';
+    import type { LinkScoreMap } from '../types';
 
     export let url: string;
     export let name: string;
-    export let score: number;
+    export let score: LinkScoreMap | undefined = undefined;
 </script>
 
-<div class="flex space-x-4 pt-2 text-sm">
+<div class="flex items-center space-x-4 pt-2 text-sm">
     <button
-        class="text-blue-400"
+        class="rounded-md p-2 text-blue-400 hover:bg-blue-400 hover:bg-opacity-20"
         on:click={() => {
             clipboard.writeText(url);
         }}>COPY</button
     >
     <button
-        class="text-blue-400"
+        class="rounded-md p-2 text-blue-400 hover:bg-blue-400 hover:bg-opacity-20"
         on:click={() => {
             open(url);
         }}>OPEN</button
     >
     <button
-        class="text-rose-700"
+        class="rounded-md p-2 text-red-500 hover:bg-red-500 hover:bg-opacity-20"
         on:click={async () => {
             const deleted = await deleteLink(name);
             if (!deleted) {
@@ -38,5 +39,5 @@
             }
         }}>DELETE</button
     >
-    <Scores {name} {score} />
+    <Score {score} {url} />
 </div>

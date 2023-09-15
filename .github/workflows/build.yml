@@ -33,7 +33,10 @@ jobs:
             pkg-config
 
       - name: Fetch Node.js Dependencies
-        run: pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: true
 
       - name: Build Release version
         run: pnpm build
