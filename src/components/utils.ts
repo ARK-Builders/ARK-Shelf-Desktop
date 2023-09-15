@@ -18,7 +18,7 @@ export const createLink = async (
         const newLink = {
             ...data,
             created_time,
-            score: 0,
+            score: undefined,
             name,
         };
         return newLink;
@@ -52,7 +52,7 @@ export const readCurrentLinks = async (sortingMode: SortMode) => {
         const link = await invoke<Omit<LinkInfo, 'score' | 'name'>>('read_link', {
             name,
         });
-        const score = scores?.find(s => s.name === name)?.value ?? 0;
+        const score = scores?.find(s => s.name === name);
         return {
             ...link,
             name,
@@ -83,5 +83,32 @@ export const deleteLink = async (name: string): Promise<boolean> => {
         return true;
     } catch (_) {
         return false;
+    }
+};
+
+export const addScore = async (name: string) => {
+    try {
+        const score = await invoke<LinkScoreMap | undefined>('add', { name });
+        return score;
+    } catch (e) {
+        return;
+    }
+};
+
+export const substractScore = async (name: string) => {
+    try {
+        const score = await invoke<LinkScoreMap | undefined>('substract', { name });
+        return score;
+    } catch (e) {
+        return;
+    }
+};
+
+export const createScore = async ({ value, url }: { value: number; url: string }) => {
+    try {
+        const score = await invoke<LinkScoreMap>('create_score', { url, value });
+        return score;
+    } catch (_) {
+        return;
     }
 };

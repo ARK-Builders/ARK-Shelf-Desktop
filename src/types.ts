@@ -9,7 +9,7 @@ export interface LinkInfo {
     url: string;
     name: string;
     created_time?: SystemTime;
-    score: number;
+    score?: LinkScoreMap;
 }
 export interface OpenGraph {
     /// Represents the "og:title" OpenGraph meta tag.
@@ -34,6 +34,7 @@ export interface OpenGraph {
 export interface LinkScoreMap {
     name: string;
     value: number;
+    hash: string;
 }
 
 export type SortMode = 'normal' | 'date' | 'score';
