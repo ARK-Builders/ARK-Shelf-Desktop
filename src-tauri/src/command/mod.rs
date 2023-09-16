@@ -28,20 +28,9 @@ async fn create_link(
     desc: Option<String>,
     url: String,
     state: tauri::State<'_, Cli>,
-) -> Result<String, String> {
-    let url = match Url::parse(url.as_str()) {
-        Ok(val) => val,
-        Err(e) => return Err(e.to_string()),
-    };
-    let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
-        .expect("Error compute resource from url");
-    let domain = url.domain().expect("Url has no domain");
-    let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
-    let mut link = Link::new(url, title, desc);
-    link.write_to_path(&state.path, &path, true)
-        .await
-        .expect("Custom error type needed");
-    Ok(path)
+) -> Result<(), String> {
+    super::create_link(title, desc, &url, &state.path).expect("Error creating link");
+    Ok(())
 }
 
 #[tauri::command]

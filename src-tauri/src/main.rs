@@ -5,10 +5,11 @@
 
 pub mod base;
 mod command;
+mod cli;
 use base::{Score, Scores};
 use clap::Parser;
 use command::*;
-use home::home_dir;
+use crate::cli::*;
 use lazy_static::lazy_static;
 use notify::{watcher, DebouncedEvent, Watcher};
 use std::{
@@ -27,21 +28,6 @@ lazy_static! {
         .join(".ark")
         .join("shelf")
         .join("scores");
-}
-
-#[derive(Parser, Default, Debug)]
-#[clap(
-    name = "ARK Shelf Desktop",
-    about = "Desktop Version of ARK Shelf, put you bookmarks when surfing."
-)]
-struct Cli {
-    #[clap(
-        short,
-        long,
-        help = "Path to store .link file", 
-        default_value_t = format!("{}/.ark-shelf",home_dir().unwrap().display())
-    )]
-    path: String,
 }
 
 // Initialize file watcher.
@@ -126,6 +112,12 @@ fn main() {
         .read(true)
         .open(SCORES_PATH.as_path())
         .unwrap_or_else(|_| File::create(SCORES_PATH.as_path()).unwrap());
+
+    // Add link if command is specified
+    // Quit afterwards
+    if cli.add_new_link() {
+        std::process::exit(0)
+    }
 
     let mut scores_string = String::new();
     let mut scores = vec![];
