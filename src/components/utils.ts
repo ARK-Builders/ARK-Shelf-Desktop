@@ -64,7 +64,7 @@ export const readCurrentLinks = async (sortingMode: SortMode) => {
     links.sort((a, b) => {
         switch (sortingMode) {
             case 'normal':
-                return a.title.localeCompare(b.title);
+                return 0;
             case 'date':
                 return (
                     b.created_time?.secs_since_epoch ?? 0 - (a.created_time?.secs_since_epoch ?? 0)
