@@ -42,20 +42,20 @@ export const LinkListItem = ({
   }, [link.url]);
 
   return (
+    // TODO: Tooltip  probably shouldn't be created if no previewInfo is available
     <Tooltip
       arrow
       title={
         <>
-          <Typography variant="body2">
-            {previewInfo?.title ?? "Preview may not available at the moment"}
-          </Typography>
-          {link.desc && <Typography>{link.desc}</Typography>}
-          <img
-            loading="lazy"
-            alt="preview"
-            src={previewInfo?.image}
-            width={250}
-          ></img>
+          <Typography>{link.url}</Typography>
+          {(previewInfo?.image && (
+            <img
+              loading="lazy"
+              alt="preview"
+              src={previewInfo.image}
+              width={250}
+            />
+          )) || "Preview Not Available" } 
         </>
       }
     >
