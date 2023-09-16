@@ -79,7 +79,7 @@ const Home = () => {
     links.sort((a, b) => {
       switch (mode) {
         case "normal":
-          return a.title?.localeCompare(b.title ?? "") ?? 0;
+          return 0;
         case "date":
           return (
             b.created_time?.secs_since_epoch ??
