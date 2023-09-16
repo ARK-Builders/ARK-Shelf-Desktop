@@ -11,7 +11,7 @@ use crate::{
 };
 
 use tauri::{Builder, Runtime};
-use url::Url;
+use url::{Url, ParseError};
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(serde::Serialize)]
@@ -29,9 +29,18 @@ async fn create_link(
     url: String,
     state: tauri::State<'_, Cli>,
 ) -> Result<String, String> {
+    // Tries to parse the url, if there is no scheme then prepend http:// and try again
     let url = match Url::parse(url.as_str()) {
         Ok(val) => val,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => match e {
+            ParseError::RelativeUrlWithoutBase => {
+                match Url::parse(format!("http://{}", url).as_str()) {
+                    Ok(val) => val,
+                    Err(e) => return Err(e.to_string())
+                }
+            },
+            _ => return Err(e.to_string())
+        },
     };
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .expect("Error compute resource from url");
