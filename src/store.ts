@@ -21,14 +21,18 @@ const sortLinks = (links: LinkInfo[], mode: SortMode) => {
 };
 
 export const createLinksInfos = (defaultMode: SortMode = 'normal') => {
-    let mode = defaultMode;
+    const mode = writable(defaultMode);
+    let currentMode = defaultMode;
+    mode.subscribe(m => {
+        currentMode = m;
+    });
 
     const { subscribe, update, set } = writable<LinkInfo[]>([]);
 
     const updateLinks = (updater: Updater<LinkInfo[]>) => {
         update(currentLinks => {
             const updatedLinks = updater(currentLinks);
-            const sortedLinks = sortLinks(updatedLinks, mode);
+            const sortedLinks = sortLinks(updatedLinks, currentMode);
             return sortedLinks;
         });
     };
@@ -37,16 +41,17 @@ export const createLinksInfos = (defaultMode: SortMode = 'normal') => {
         subscribe,
         update: updateLinks,
         setMode: (newMode: SortMode) => {
-            mode = newMode;
+            mode.set(newMode);
             update(links => {
-                const sorted = sortLinks(links, mode);
+                const sorted = sortLinks(links, newMode);
                 return sorted;
             });
         },
         set: (newLinks: LinkInfo[]) => {
-            const sorted = sortLinks(newLinks, mode);
+            const sorted = sortLinks(newLinks, currentMode);
             set(sorted);
         },
+        mode: { subscribe: mode.subscribe },
     };
 };
 
