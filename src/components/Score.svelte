@@ -1,9 +1,9 @@
 <script lang="ts">
     import Arrow from '~icons/mdi/arrow-up';
     import type { LinkScoreMap } from '../types';
-    import { addScore, createScore, substractScore, updateSorting } from './utils';
+    import { addScore, createScore, substractScore } from './utils';
     import { toast } from '@zerodevx/svelte-toast';
-    import { linksInfos, sortingMode } from '../store';
+    import { linksInfos } from '../store';
 
     export let score: LinkScoreMap | undefined = undefined;
     export let url: string;
@@ -23,9 +23,6 @@
                 }
                 return links;
             });
-            if ($sortingMode === 'score') {
-                updateSorting('score');
-            }
         } else {
             toast.push('Error updating score!');
         }
@@ -46,9 +43,6 @@
                 }
                 return links;
             });
-            if ($sortingMode === 'score') {
-                updateSorting('score');
-            }
         } else {
             toast.push('Error updating score!');
         }

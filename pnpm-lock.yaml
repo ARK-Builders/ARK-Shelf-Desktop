@@ -46,6 +46,9 @@ devDependencies:
     eslint-plugin-svelte:
         specifier: ^2.33.0
         version: 2.33.0(eslint@8.48.0)(svelte@4.0.5)
+    flowbite:
+        specifier: ^1.8.1
+        version: 1.8.1
     flowbite-svelte:
         specifier: ^0.44.15
         version: 0.44.15(svelte@4.0.5)

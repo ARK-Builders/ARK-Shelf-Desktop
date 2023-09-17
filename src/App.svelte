@@ -2,10 +2,10 @@
     import { onMount } from 'svelte';
     import Form from './components/Form.svelte';
     import LinkCard from './components/LinkCard.svelte';
-    import { linksInfos, sortingMode } from './store';
+    import { linksInfos } from './store';
     import type { LinkInfo } from './types';
     import { SvelteToast } from '@zerodevx/svelte-toast';
-    import { readCurrentLinks, updateSorting } from './components/utils';
+    import { readCurrentLinks } from './components/utils';
     import Loading from '~icons/line-md/loading-loop';
 
     let initialFetch: Promise<LinkInfo[]>;
@@ -14,11 +14,8 @@
         initialFetch = readCurrentLinks();
         initialFetch.then(links => {
             $linksInfos = links;
-            updateSorting($sortingMode);
         });
     });
-
-    $: updateSorting($sortingMode);
 </script>
 
 <div class="relative flex h-screen min-h-screen w-screen flex-col text-white">
