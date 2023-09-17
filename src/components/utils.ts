@@ -99,3 +99,15 @@ export const createScore = async ({ value, url }: { value: number; url: string }
         return;
     }
 };
+
+export const debounce = (callback: unknown, wait = 500) => {
+    let timeoutId: number;
+    return (...args: unknown[]) => {
+        window.clearTimeout(timeoutId);
+        timeoutId = window.setTimeout(() => {
+            if (typeof callback === 'function') {
+                callback(...args);
+            }
+        }, wait);
+    };
+};

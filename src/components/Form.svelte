@@ -1,7 +1,7 @@
 <script lang="ts">
     import { toast } from '@zerodevx/svelte-toast';
     import { linksInfos } from '../store';
-    import { createLink, getPreview } from './utils';
+    import { createLink, debounce, getPreview } from './utils';
     import Alphabetical from '~icons/ic/outline-sort-by-alpha';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
@@ -23,6 +23,16 @@
             toast.push('Failed to fetch website data');
         }
     };
+
+    let error = false;
+
+    const debouncedCheck = debounce((url: string) => {
+        if ($linksInfos.some(l => l.url === url)) {
+            error = true;
+        } else {
+            error = false;
+        }
+    }, 200);
 </script>
 
 <div>
@@ -64,18 +74,24 @@
                 url,
                 desc,
             };
-            const newLink = await createLink(data);
-            if (newLink) {
-                linksInfos.update(links => {
-                    links.push(newLink);
-                    return links;
-                });
-                toast.push('Link created!');
-            } else {
-                toast.push('Error creating link');
+            if ($linksInfos.every(l => l.url !== url)) {
+                const newLink = await createLink(data);
+                if (newLink) {
+                    linksInfos.update(links => {
+                        links = links.filter(l => l.url !== url);
+                        links.push(newLink);
+                        return links;
+                    });
+                    toast.push('Link created!');
+                } else {
+                    toast.push('Error creating link');
+                }
             }
         }}>
         <label for="url" aria-label="URL" />
+        {#if error}
+            <p class="text-red-500">There is already a link with the same URL</p>
+        {/if}
         <input
             type="text"
             id="url"
@@ -83,6 +99,12 @@
             required
             placeholder="URL*"
             class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
+            on:keyup={e => {
+                debouncedCheck(e.currentTarget.value);
+            }}
+            on:change={e => {
+                debouncedCheck(e.currentTarget.value);
+            }}
             bind:value={url} />
         <label for="title" aria-label="Title" />
         <input
@@ -102,7 +124,7 @@
             class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
             id="description" />
         <div class="flex justify-between">
-            <button type="submit" class="pl-2 text-blue-400">CREATE</button>
+            <button type="submit" class="pl-2 text-blue-400" disabled={error}>CREATE</button>
             <button class="pr-2 text-rose-700" {disabled} on:click={auto}>AUTO FILLED</button>
         </div>
     </form>
