@@ -32,6 +32,8 @@ async fn create_link(
     url: String,
     state: tauri::State<'_, Cli>,
 ) -> Result<String> {
+    let b = Url::parse(url.as_str());
+    println!("Parsing url {url}: {:?}", b);
     let url = Url::parse(url.as_str())?;
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .map_err(|_| Error::Arklib)?;

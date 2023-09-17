@@ -24,7 +24,7 @@
         if (secondesSinceEpoch) {
             date.setTime(secondesSinceEpoch * 1000);
         }
-        return `${format(date.getDay())}/${format(date.getMonth())}/${date.getFullYear()} ${format(
+        return `${format(date.getDate())}/${format(date.getMonth())}/${date.getFullYear()} ${format(
             date.getHours(),
         )}:${format(date.getMinutes())}:${format(date.getSeconds())}`;
     };
@@ -50,8 +50,7 @@
                 alt="Preview of {link.url}"
                 width="100"
                 height="100"
-                loading="lazy"
-            />
+                loading="lazy" />
         {/if}
         <p class="break-all pl-2">
             {link.desc ?? ''}

@@ -5,6 +5,9 @@
     import Alphabetical from '~icons/ic/outline-sort-by-alpha';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
+    import { createEventDispatcher } from 'svelte';
+
+    const dispatch = createEventDispatcher<{ search: string }>();
 
     let url = '';
     let titleElement: HTMLInputElement;
@@ -50,8 +53,8 @@
             class:bg-green-400={$mode === 'date'}
             on:click={() => {
                 linksInfos.setMode('date');
-            }}
-            ><Calendar />
+            }}>
+            <Calendar />
         </button>
         <button
             class="rounded-md p-2"
@@ -61,6 +64,18 @@
             }}>
             <Scores />
         </button>
+    </div>
+    <div class="py-2">
+        <input
+            type="search"
+            class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
+            placeholder="Search"
+            on:change={e => {
+                dispatch('search', e.currentTarget.value);
+            }}
+            on:input={e => {
+                dispatch('search', e.currentTarget.value);
+            }} />
     </div>
     <form
         class="sticky top-0 flex flex-col space-y-2"

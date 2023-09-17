@@ -10,6 +10,20 @@
 
     let initialFetch: Promise<LinkInfo[]>;
 
+    let search = '';
+
+    $: visibleLinks = $linksInfos.filter(l => {
+        if (search) {
+            return (
+                l.url.toLocaleLowerCase().includes(search) ||
+                l.title.toLocaleLowerCase().includes(search) ||
+                l.desc?.toLocaleLowerCase().includes(search)
+            );
+        } else {
+            return true;
+        }
+    });
+
     onMount(() => {
         initialFetch = readCurrentLinks();
         initialFetch.then(links => {
@@ -31,12 +45,15 @@
                         <p>Loading links...</p>
                     </div>
                 {:then}
-                    {#each $linksInfos as link (link.url)}
+                    {#each visibleLinks as link (link.url)}
                         <LinkCard {link} />
                     {/each}
                 {/await}
             </div>
-            <Form />
+            <Form
+                on:search={e => {
+                    search = e.detail.toLocaleLowerCase();
+                }} />
         </div>
     </main>
 </div>
