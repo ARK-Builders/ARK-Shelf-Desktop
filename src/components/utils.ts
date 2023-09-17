@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api';
+import { linksInfos } from '../store';
 import type { LinkInfo, LinkScoreMap, OpenGraph, SortMode } from '../types';
 
 export const createLink = async (
@@ -45,7 +46,7 @@ const getScores = async () => {
     }
 };
 
-export const readCurrentLinks = async (sortingMode: SortMode) => {
+export const readCurrentLinks = async () => {
     const names = await invoke<string[]>('read_link_list');
     const scores = await getScores();
     const linkPromises = names.map(async name => {
@@ -61,19 +62,6 @@ export const readCurrentLinks = async (sortingMode: SortMode) => {
     });
 
     const links = await Promise.all(linkPromises);
-    links.sort((a, b) => {
-        switch (sortingMode) {
-            case 'normal':
-                return a.title.localeCompare(b.title);
-            case 'date':
-                return (
-                    b.created_time?.secs_since_epoch ?? 0 - (a.created_time?.secs_since_epoch ?? 0)
-                );
-            case 'score':
-            default:
-                return 0;
-        }
-    });
     return links;
 };
 
@@ -111,4 +99,25 @@ export const createScore = async ({ value, url }: { value: number; url: string }
     } catch (_) {
         return;
     }
+};
+
+export const updateSorting = (mode: SortMode) => {
+    linksInfos.update(links => {
+        links.sort((a, b) => {
+            switch (mode) {
+                case 'normal':
+                    return a.title.localeCompare(b.title);
+                case 'date':
+                    return (
+                        (b.created_time?.secs_since_epoch ?? 0) -
+                        (a.created_time?.secs_since_epoch ?? 0)
+                    );
+                case 'score':
+                    return (b.score?.value ?? 0) - (a.score?.value ?? 0);
+                default:
+                    return 0;
+            }
+        });
+        return links;
+    });
 };
