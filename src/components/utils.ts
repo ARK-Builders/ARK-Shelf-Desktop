@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api';
-import { linksInfos } from '../store';
-import type { LinkInfo, LinkScoreMap, OpenGraph, SortMode } from '../types';
+import type { LinkInfo, LinkScoreMap, OpenGraph } from '../types';
 
 export const createLink = async (
     data: Omit<LinkInfo, 'created_timed' | 'score' | 'name'>,
@@ -99,25 +98,4 @@ export const createScore = async ({ value, url }: { value: number; url: string }
     } catch (_) {
         return;
     }
-};
-
-export const updateSorting = (mode: SortMode) => {
-    linksInfos.update(links => {
-        links.sort((a, b) => {
-            switch (mode) {
-                case 'normal':
-                    return a.title.localeCompare(b.title);
-                case 'date':
-                    return (
-                        (b.created_time?.secs_since_epoch ?? 0) -
-                        (a.created_time?.secs_since_epoch ?? 0)
-                    );
-                case 'score':
-                    return (b.score?.value ?? 0) - (a.score?.value ?? 0);
-                default:
-                    return 0;
-            }
-        });
-        return links;
-    });
 };

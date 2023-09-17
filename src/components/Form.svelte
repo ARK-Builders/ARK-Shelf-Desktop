@@ -1,6 +1,6 @@
 <script lang="ts">
     import { toast } from '@zerodevx/svelte-toast';
-    import { linksInfos, sortingMode } from '../store';
+    import { linksInfos } from '../store';
     import { createLink, getPreview } from './utils';
     import Alphabetical from '~icons/ic/outline-sort-by-alpha';
     import Calendar from '~icons/ic/baseline-calendar-month';
@@ -27,19 +27,19 @@
     <div class="flex w-full justify-between">
         <button
             on:click={() => {
-                sortingMode.set('normal');
+                linksInfos.setMode('normal');
             }}>
             <Alphabetical />
         </button>
         <button
             on:click={() => {
-                sortingMode.set('date');
+                linksInfos.setMode('date');
             }}
             ><Calendar />
         </button>
         <button
             on:click={() => {
-                sortingMode.set('score');
+                linksInfos.setMode('score');
             }}>
             <Scores />
         </button>
