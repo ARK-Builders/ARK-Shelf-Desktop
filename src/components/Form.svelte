@@ -10,6 +10,8 @@
     let titleElement: HTMLInputElement;
     let descriptionElement: HTMLInputElement;
 
+    const mode = linksInfos.mode;
+
     $: disabled = !url;
 
     const auto = async () => {
@@ -26,18 +28,24 @@
 <div>
     <div class="flex w-full justify-between">
         <button
+            class="rounded-md p-2"
+            class:bg-green-400={$mode === 'normal'}
             on:click={() => {
                 linksInfos.setMode('normal');
             }}>
             <Alphabetical />
         </button>
         <button
+            class="rounded-md p-2"
+            class:bg-green-400={$mode === 'date'}
             on:click={() => {
                 linksInfos.setMode('date');
             }}
             ><Calendar />
         </button>
         <button
+            class="rounded-md p-2"
+            class:bg-green-400={$mode === 'score'}
             on:click={() => {
                 linksInfos.setMode('score');
             }}>
