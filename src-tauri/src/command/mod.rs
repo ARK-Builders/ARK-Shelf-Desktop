@@ -5,6 +5,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+mod errors;
+use errors::{Error, Result};
+
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
     Cli, ARK_SHELF_WORKING_DIR, SCORES_PATH,
@@ -28,31 +31,28 @@ async fn create_link(
     desc: Option<String>,
     url: String,
     state: tauri::State<'_, Cli>,
-) -> Result<String, String> {
-    let url = match Url::parse(url.as_str()) {
-        Ok(val) => val,
-        Err(e) => return Err(e.to_string()),
-    };
+) -> Result<String> {
+    let url = Url::parse(url.as_str())?;
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
-        .expect("Error compute resource from url");
+        .map_err(|_| Error::Arklib)?;
     let domain = url.domain().expect("Url has no domain");
     let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
     // Validate there is not already a ressource identical
     if std::fs::metadata(&path).is_ok() {
-        Err("Resource already exist".into())
+        Err(Error::LinkExist)
     } else {
         let mut link = Link::new(url, title, desc);
         link.write_to_path(&state.path, &path, true)
             .await
-            .expect("Custom error type needed");
+            .map_err(|_| Error::Arklib)?;
         Ok(path)
     }
 }
 
 #[tauri::command]
 /// Remove a `.link` from directory
-async fn delete_link(name: String, state: tauri::State<'_, Cli>) -> Result<(), ()> {
-    fs::remove_file(format!("{}/{}", &state.path, name)).expect("cannot remove the link");
+async fn delete_link(name: String, state: tauri::State<'_, Cli>) -> Result<()> {
+    fs::remove_file(format!("{}/{}", &state.path, name))?;
     Ok(())
 }
 
@@ -66,7 +66,6 @@ fn get_fs_links() -> Vec<DirEntry> {
                 .file_name()
                 .to_str()
                 .unwrap()
-                .to_string()
                 .ends_with(".link")
         })
         .map(|e| e.unwrap())
@@ -87,8 +86,8 @@ async fn read_link_list() -> Vec<String> {
 }
 
 #[tauri::command]
-async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
-    Link::get_preview(url).await.map_err(|e| e.to_string())
+async fn generate_link_preview(url: String) -> Result<OpenGraph> {
+    Link::get_preview(url).await.map_err(|_| Error::IO)
 }
 
 /// Get the score list
@@ -96,11 +95,9 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
 async fn get_scores(
     scores: tauri::State<'_, Arc<Mutex<Scores>>>,
     path: tauri::State<'_, Cli>,
-) -> Result<Scores, String> {
-    let scores_content =
-        std::fs::read(SCORES_PATH.as_path()).unwrap_or("Error reading score file".into());
-    let scores_content =
-        String::from_utf8(scores_content).unwrap_or("Error reading score file".into());
+) -> Result<Scores> {
+    let scores_content = std::fs::read(SCORES_PATH.as_path())?;
+    let scores_content = String::from_utf8(scores_content)?;
     let scores_files = Score::parse_and_merge(scores_content, &path.path);
     let mut guard = scores.lock().unwrap();
     *guard = scores_files.clone();
@@ -108,10 +105,7 @@ async fn get_scores(
 }
 
 #[tauri::command]
-async fn add(
-    scores: tauri::State<'_, Arc<Mutex<Scores>>>,
-    name: String,
-) -> Result<Option<Score>, String> {
+async fn add(scores: tauri::State<'_, Arc<Mutex<Scores>>>, name: String) -> Result<Option<Score>> {
     let mut guard = scores.lock().unwrap();
     let mut result = None;
     if let Some(score) = guard.iter_mut().find(|score| score.name == name) {
@@ -127,7 +121,7 @@ async fn add(
 async fn substract(
     scores: tauri::State<'_, Arc<Mutex<Scores>>>,
     name: String,
-) -> Result<Option<Score>, String> {
+) -> Result<Option<Score>> {
     let mut guard = scores.lock().unwrap();
     let mut result = None;
     if let Some(score) = guard.iter_mut().find(|score| score.name == name) {
@@ -144,13 +138,13 @@ async fn create_score(
     scores: tauri::State<'_, Arc<Mutex<Scores>>>,
     url: String,
     value: i64,
-) -> Result<Score, String> {
+) -> Result<Score> {
     let mut score = Score::new(&url);
     score.value = value;
     let mut guard = scores.lock().unwrap();
     guard.push(score.clone());
     let content = Score::into_lines(&*guard);
-    std::fs::write(SCORES_PATH.as_path(), content).unwrap();
+    std::fs::write(SCORES_PATH.as_path(), content)?;
     Ok(score)
 }
 
@@ -161,17 +155,14 @@ async fn create_score(
 async fn set_scores(
     scores: Scores,
     state_scores: tauri::State<'_, Arc<Mutex<Scores>>>,
-) -> Result<(), String> {
+) -> Result<()> {
     let guard = state_scores.lock().unwrap();
     dbg!(&scores);
     let mut scores_file = File::options()
         .write(true)
         .truncate(true)
-        .open(SCORES_PATH.as_path())
-        .unwrap();
-    scores_file
-        .write_all(Score::into_lines(&*guard).as_bytes())
-        .map_err(|e| e.to_string())?;
+        .open(SCORES_PATH.as_path())?;
+    scores_file.write_all(Score::into_lines(&*guard).as_bytes())?;
     Ok(())
 }
 
@@ -188,10 +179,10 @@ pub struct LinkWrapper {
 
 #[tauri::command]
 /// Read data from `.link` file
-async fn read_link(name: String, state: tauri::State<'_, Cli>) -> Result<LinkWrapper, ()> {
+async fn read_link(name: String, state: tauri::State<'_, Cli>) -> Result<LinkWrapper> {
     let file_path = format!("{}/{name}", &state.path);
-    let link = Link::load(&state.path, &file_path).expect(&format!("Error loading {file_path}"));
-    let meta = fs::metadata(&file_path).expect("Error loading metadata");
+    let link = Link::load(&state.path, &file_path).map_err(|_| Error::Arklib)?;
+    let meta = fs::metadata(&file_path)?;
     let created_time = match meta.created() {
         Ok(time) => Some(time),
         Err(_) => None,
