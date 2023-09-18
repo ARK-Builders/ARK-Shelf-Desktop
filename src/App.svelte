@@ -31,7 +31,7 @@
                         <p>Loading links...</p>
                     </div>
                 {:then}
-                    {#each $linksInfos as link (link.url)}
+                    {#each $linksInfos as link}
                         <LinkCard {link} />
                     {/each}
                 {/await}
