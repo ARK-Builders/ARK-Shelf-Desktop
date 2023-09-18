@@ -3,58 +3,58 @@ name: Build
 env:
   CARGO_TERM_COLOR: always
 
-on: [push]
+on: pull_request
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+        steps:
+            - uses: actions/checkout@v3
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
+            - name: Install Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  override: true
+                  components: rustfmt, clippy
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3.2.0
-        with:
-          node-version: '16.x'
+            - name: Setup Node.js
+              uses: actions/setup-node@v3.2.0
+              with:
+                  node-version: '16.x'
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev \
-            webkit2gtk-4.0 libappindicator3-dev \
-            librsvg2-dev patchelf libdbus-1-dev \
-            pkg-config
+            - name: Install dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libgtk-3-dev \
+                    webkit2gtk-4.0 libappindicator3-dev \
+                    librsvg2-dev patchelf libdbus-1-dev \
+                    pkg-config
 
-      - name: Fetch Node.js Dependencies
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: true
+            - name: Fetch Node.js Dependencies
+              uses: pnpm/action-setup@v2
+              with:
+                  version: 8
+                  run_install: true
 
-      - name: Build Release version
-        run: pnpm build
+            - name: Build Release version
+              run: pnpm tauri build
 
-      - name: Upload AppImage
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: ark-shelf-desktop.AppImage
-          path: ./target/release/bundle/appimage/ark-shelf-desktop_*_amd64.AppImage
+            - name: Upload AppImage
+              uses: actions/upload-artifact@v3.1.0
+              with:
+                  name: ark-shelf-desktop.AppImage
+                  path: ./src-tauri/target/release/bundle/appimage/*.AppImage
 
-      - name: Upload .deb build
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: ark-shelf-desktop.deb
-          path: ./target/release/bundle/deb/ark-shelf-desktop_*_amd64.deb
+            - name: Upload .deb build
+              uses: actions/upload-artifact@v3.1.0
+              with:
+                  name: ark-shelf-desktop.deb
+                  path: ./src-tauri/target/release/bundle/deb/*.deb
 
-      - name: Upload binary build
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: ark-shelf-desktop
-          path: ./target/release/ark-shelf-desktop
+            - name: Upload binary build
+              uses: actions/upload-artifact@v3.1.0
+              with:
+                  name: ark-shelf-desktop
+                  path: ./src-tauri/target/release/ark-shelf-desktop
