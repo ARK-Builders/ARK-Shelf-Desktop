@@ -1,7 +1,7 @@
 name: Build
 
 env:
-  CARGO_TERM_COLOR: always
+    CARGO_TERM_COLOR: always
 
 on: pull_request
 

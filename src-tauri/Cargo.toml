@@ -1,0 +1,31 @@
+[package]
+name = "ark-shelf-desktop"
+version = "0.1.0"
+description = "ARK Shelf Rusty-core"
+authors = ["Jerry Wong <yuki.n@tuta.io>"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.57"
+
+[build-dependencies]
+tauri-build = { version = "1.0.3", features = [] }
+
+[dependencies]
+arklib = { git = "https://github.com/ARK-Builders/arklib", rev = "51cfa7d6" }
+clap = { version = "3.2.8", features = ["derive"] }
+home = "0.5.3"
+notify = "4.0.17"
+lazy_static = "1.4.0"
+scraper = "0.13.0"
+serde = { version = "1.0.138", features = ["derive"] }
+tauri = { version = "1.0.3", features = ["api-all"] }
+url = { version = "2.2.2", features = ["serde"] }
+walkdir = "2.3.2"
+
+[features]
+# by default Tauri runs in production mode
+# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
+default = ["custom-protocol"]
+# this feature is used used for production builds where `devPath` points to the filesystem
+# DO NOT remove this
+custom-protocol = ["tauri/custom-protocol"]
