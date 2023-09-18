@@ -4,23 +4,15 @@ A dekstop version of ARK Shelf.
 
 ## Preparation
 
--   Node.js 16+
--   Rust (MSRV 1.60 or latest)
--   Yarn 1
+-   [Node.js 16+](https://nodejs.org/en/download)
+-   [Rust (MSRV 1.60 or latest)](https://www.rust-lang.org/tools/install)
+-   [pnpm](https://pnpm.io/installation): `curl -fsSL https://get.pnpm.io/install.sh | sh -`
+-   [vite](https://vitejs.dev/): `pnpm install vite`
+-   [tauri cli](https://tauri.app/): `pnpm add -D @tauri-apps/cli`
 
-## Install
+### Tauri requirements:
 
-Fork or pull the repo first.
-
-Then setup the node dependencies
-
-```bash
-pnpm i
-```
-
-Install the Rust requirements:
-
--   If you are on Debian
+- Debian:
 
     ```bash
     sudo apt update
@@ -34,49 +26,52 @@ Install the Rust requirements:
         librsvg2-dev
     ```
 
-    Then install Rust
-
-    ```sh
-    curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
-    ```
-
--   If you are on windows:
+-  Windows:
 
     Install Microsoft Visual Studio C++ build tools [Build tools](https://visualstudio.microsoft.com/fr/visual-cpp-build-tools/)
-    Then install Rust via rustup [Rustup](https://www.rust-lang.org/tools/install)
 
--   If you are on MacOS:
+-  MacOS:
 
     ```bash
     xcode-select --install
     ```
 
-    Then install Rust
 
-    ```sh
-    curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
-    ```
-
-Also please create a directory for development build.
+Create a build directory for tauri<sup>[*](https://github.com/tauri-apps/tauri/issues/3142)</sup>.
 
 ```sh
-mkdir app/build
+mkdir dist
 ```
 
-Once it finished, you can run this command to get in development.
+## Install
+
+Clone the repo
+
+```
+git clone https://github.com/ARK-Builders/ARK-Shelf-Desktop.git
+```
+
+Then setup the node dependencies
+
+```bash
+pnpm i
+```
+
+To run:
 
 ```bash
 pnpm dev
 ```
 
-> It may takes more time for the first-run since it need to fetch dependencies for tauri and build. Please be patient
-
-And to get a production build, use this command.
+To build a production release:
 
 ```bash
-pnpm build
+pnpm tauri build
 ```
+
+This will output binaries in `./src-tauri/target/release`
+
 
 ## Note For AppImage Build
 
-Due to the limitation of AppImage, if you want to use another directory to store you link, you have to provide the absolute path (or full path) to use it.
+Due to the limitation of AppImage, if you want to use another directory, you have to provide the absolute path (or full path) to use it.
