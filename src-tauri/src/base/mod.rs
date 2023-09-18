@@ -28,8 +28,6 @@ pub enum Mode {
 }
 pub type Scores = Vec<Score>;
 
-
-
 #[derive(Debug, Deserialize, Serialize, PartialEq, PartialOrd, Clone)]
 pub struct Score {
     pub name: String,
@@ -47,7 +45,7 @@ impl Score {
         Score {
             hash,
             name,
-            value: 0
+            value: 0,
         }
     }
 

@@ -134,7 +134,7 @@ fn main() {
     // Skip if there's no content in the file.
     if !scores_string.is_empty() {
         scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.as_path());
-    } 
+    }
 
     dbg!(&scores);
 

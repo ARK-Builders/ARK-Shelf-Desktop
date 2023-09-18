@@ -18,7 +18,7 @@ use walkdir::{DirEntry, WalkDir};
 pub struct LinkScoreMap {
     pub name: String,
     pub hash: String,
-    pub value: i64
+    pub value: i64,
 }
 
 #[tauri::command]
@@ -37,11 +37,16 @@ async fn create_link(
         .expect("Error compute resource from url");
     let domain = url.domain().expect("Url has no domain");
     let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
-    let mut link = Link::new(url, title, desc);
-    link.write_to_path(&state.path, &path, true)
-        .await
-        .expect("Custom error type needed");
-    Ok(path)
+    // Validate there is not already a ressource identical
+    if std::fs::metadata(&path).is_ok() {
+        Err("Resource already exist".into())
+    } else {
+        let mut link = Link::new(url, title, desc);
+        link.write_to_path(&state.path, &path, true)
+            .await
+            .expect("Custom error type needed");
+        Ok(path)
+    }
 }
 
 #[tauri::command]
@@ -88,9 +93,14 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph, String> {
 
 /// Get the score list
 #[tauri::command]
-async fn get_scores(scores: tauri::State<'_, Arc<Mutex<Scores>>>, path: tauri::State<'_, Cli>) -> Result<Scores, String> {
-    let scores_content = std::fs::read(SCORES_PATH.as_path()).unwrap_or("Error reading score file".into());
-    let scores_content = String::from_utf8(scores_content).unwrap_or("Error reading score file".into());
+async fn get_scores(
+    scores: tauri::State<'_, Arc<Mutex<Scores>>>,
+    path: tauri::State<'_, Cli>,
+) -> Result<Scores, String> {
+    let scores_content =
+        std::fs::read(SCORES_PATH.as_path()).unwrap_or("Error reading score file".into());
+    let scores_content =
+        String::from_utf8(scores_content).unwrap_or("Error reading score file".into());
     let scores_files = Score::parse_and_merge(scores_content, &path.path);
     let mut guard = scores.lock().unwrap();
     *guard = scores_files.clone();
@@ -98,7 +108,10 @@ async fn get_scores(scores: tauri::State<'_, Arc<Mutex<Scores>>>, path: tauri::S
 }
 
 #[tauri::command]
-async fn add(scores: tauri::State<'_, Arc<Mutex<Scores>>>, name: String) -> Result<Option<Score>, String> {
+async fn add(
+    scores: tauri::State<'_, Arc<Mutex<Scores>>>,
+    name: String,
+) -> Result<Option<Score>, String> {
     let mut guard = scores.lock().unwrap();
     let mut result = None;
     if let Some(score) = guard.iter_mut().find(|score| score.name == name) {
@@ -111,7 +124,10 @@ async fn add(scores: tauri::State<'_, Arc<Mutex<Scores>>>, name: String) -> Resu
 }
 
 #[tauri::command]
-async fn substract(scores: tauri::State<'_, Arc<Mutex<Scores>>>, name: String) -> Result<Option<Score>, String> {
+async fn substract(
+    scores: tauri::State<'_, Arc<Mutex<Scores>>>,
+    name: String,
+) -> Result<Option<Score>, String> {
     let mut guard = scores.lock().unwrap();
     let mut result = None;
     if let Some(score) = guard.iter_mut().find(|score| score.name == name) {
@@ -124,7 +140,11 @@ async fn substract(scores: tauri::State<'_, Arc<Mutex<Scores>>>, name: String) -
 }
 
 #[tauri::command]
-async fn create_score(scores: tauri::State<'_, Arc<Mutex<Scores>>>, url: String, value: i64) -> Result<Score, String> {
+async fn create_score(
+    scores: tauri::State<'_, Arc<Mutex<Scores>>>,
+    url: String,
+    value: i64,
+) -> Result<Score, String> {
     let mut score = Score::new(&url);
     score.value = value;
     let mut guard = scores.lock().unwrap();
@@ -132,7 +152,7 @@ async fn create_score(scores: tauri::State<'_, Arc<Mutex<Scores>>>, url: String,
     let content = Score::into_lines(&*guard);
     std::fs::write(SCORES_PATH.as_path(), content).unwrap();
     Ok(score)
-} 
+}
 
 /// Set scores
 ///
