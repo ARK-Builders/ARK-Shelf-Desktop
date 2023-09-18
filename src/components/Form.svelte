@@ -7,9 +7,8 @@
     import Scores from '~icons/ic/baseline-format-list-bulleted';
 
     let url = '';
-    let titleElement: HTMLInputElement;
-    let descriptionElement: HTMLInputElement;
-
+    let title = '';
+    let description = '';
     const mode = linksInfos.mode;
 
     $: disabled = !url;
@@ -17,8 +16,8 @@
     const auto = async () => {
         const graph = await getPreview(url);
         if (graph) {
-            titleElement.value = graph.title;
-            descriptionElement.value = graph.description;
+            title = graph.title;
+            description = graph.description;
         } else {
             toast.push('Failed to fetch website data');
         }
@@ -113,19 +112,21 @@
             name="title"
             required
             placeholder="Title*"
-            bind:this={titleElement}
+            bind:value={title}
             class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500" />
         <label for="description" aria-label="Optional description" />
         <input
             type="text"
             name="description"
-            bind:this={descriptionElement}
+            bind:value={description}
             placeholder="Description (Optional)"
             class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
             id="description" />
         <div class="flex justify-between">
             <button type="submit" class="pl-2 text-blue-400" disabled={error}>CREATE</button>
-            <button class="pr-2 text-rose-700" {disabled} on:click={auto}>AUTO FILLED</button>
+            <button class="pr-2 text-rose-700" {disabled} type="button" on:click={auto}>
+                AUTO FILLED
+            </button>
         </div>
     </form>
 </div>

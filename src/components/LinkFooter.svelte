@@ -26,7 +26,6 @@
         class="rounded-md p-2 text-red-500 hover:bg-red-500 hover:bg-opacity-20"
         on:click={async () => {
             const deleted = await deleteLink(name);
-            console.log({ deleted });
             if (!deleted) {
                 toast.push('Error deleting link');
             } else {
