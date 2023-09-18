@@ -3,7 +3,7 @@ name: Build
 env:
     CARGO_TERM_COLOR: always
 
-on: [push]
+on: pull_request
 
 jobs:
     build:
@@ -39,22 +39,22 @@ jobs:
                   run_install: true
 
             - name: Build Release version
-              run: pnpm build
+              run: pnpm tauri build
 
             - name: Upload AppImage
               uses: actions/upload-artifact@v3.1.0
               with:
                   name: ark-shelf-desktop.AppImage
-                  path: ./target/release/bundle/appimage/ark-shelf-desktop_*_amd64.AppImage
+                  path: ./src-tauri/target/release/bundle/appimage/*.AppImage
 
             - name: Upload .deb build
               uses: actions/upload-artifact@v3.1.0
               with:
                   name: ark-shelf-desktop.deb
-                  path: ./target/release/bundle/deb/ark-shelf-desktop_*_amd64.deb
+                  path: ./src-tauri/target/release/bundle/deb/*.deb
 
             - name: Upload binary build
               uses: actions/upload-artifact@v3.1.0
               with:
                   name: ark-shelf-desktop
-                  path: ./target/release/ark-shelf-desktop
+                  path: ./src-tauri/target/release/ark-shelf-desktop
