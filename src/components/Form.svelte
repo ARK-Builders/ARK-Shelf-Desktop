@@ -5,6 +5,7 @@
     import Alphabetical from '~icons/ic/outline-sort-by-alpha';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
+    import { tick } from 'svelte';
 
     let url = '';
     let title = '';
@@ -74,7 +75,10 @@
                 desc,
             };
             if ($linksInfos.every(l => l.url !== url)) {
+                const beforeCreate = new Date().getTime();
                 const newLink = await createLink(data);
+                const after = new Date().getTime();
+                console.log('Creation takes', after - beforeCreate);
                 if (newLink) {
                     linksInfos.update(links => {
                         links = links.filter(l => l.url !== url);
@@ -104,7 +108,15 @@
             on:change={e => {
                 debouncedCheck(e.currentTarget.value);
             }}
-            bind:value={url} />
+            bind:value={url}
+            on:paste={e => {
+                const text = e.clipboardData?.getData('text');
+                if (text) {
+                    url = text;
+                    description = '';
+                    title = '';
+                }
+            }} />
         <label for="title" aria-label="Title" />
         <input
             type="text"
