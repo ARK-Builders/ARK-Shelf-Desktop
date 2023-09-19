@@ -34,7 +34,7 @@
     }, 200);
 </script>
 
-<div>
+<div class="w-56">
     <div class="flex w-full justify-between">
         <button
             class="rounded-md p-2"
@@ -89,7 +89,7 @@
         }}>
         <label for="url" aria-label="URL" />
         {#if error}
-            <p class="text-red-500">There is already a link with the same URL</p>
+            <p class="break-words text-red-500">There is already a link with the same URL</p>
         {/if}
         <input
             type="text"

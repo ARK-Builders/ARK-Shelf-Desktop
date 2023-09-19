@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "tauri dev",
-        "build": "vite build",
+        "build": "tauri build",
         "preview": "vite preview",
         "check": "svelte-check --tsconfig ./tsconfig.json",
         "lint": "pnpm check && eslint . --fix",

@@ -44,5 +44,5 @@ jobs:
             - name: Release AppImage
               uses: ncipollo/release-action@v1
               with:
-                  artifacts: './target/release/bundle/appimage/*.AppImage'
+                  artifacts: './src-tauri/target/release/bundle/appimage/*.AppImage'
                   token: ${{ secrets.GITHUB_TOKEN }}

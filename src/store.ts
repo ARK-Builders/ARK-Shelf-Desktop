@@ -5,7 +5,7 @@ const sortLinks = (links: LinkInfo[], mode: SortMode) => {
     links.sort((a, b) => {
         switch (mode) {
             case 'normal':
-                return a.title.localeCompare(b.title);
+                return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
             case 'date':
                 return (
                     (b.created_time?.secs_since_epoch ?? 0) -
