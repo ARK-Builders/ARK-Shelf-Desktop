@@ -51,14 +51,14 @@ impl Score {
 
     pub fn calc_hash(path: impl AsRef<Path>) -> Result<String, std::io::Error> {
         let file_metadata = std::fs::metadata(&path)?;
-        let ressource =
+        let resource =
             arklib::id::ResourceId::compute(file_metadata.len(), path).map_err(|_| {
                 std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     "Error computing RessourceId",
                 )
             })?;
-        Ok(format!("{}-{}", ressource.crc32, ressource.data_size))
+        Ok(format!("{}-{}", resource.crc32, resource.data_size))
     }
     /// Parse scores from string.
     ///

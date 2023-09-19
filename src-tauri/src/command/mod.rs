@@ -37,7 +37,7 @@ async fn create_link(
         .map_err(|_| Error::Arklib)?;
     let domain = url.domain().expect("Url has no domain");
     let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
-    // Validate there is not already a ressource identical
+    // Validate there is not already a resource identical
     if std::fs::metadata(&path).is_ok() {
         Err(Error::LinkExist)
     } else {
