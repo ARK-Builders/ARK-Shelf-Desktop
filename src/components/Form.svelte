@@ -5,7 +5,6 @@
     import Alphabetical from '~icons/ic/outline-sort-by-alpha';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
-    import { tick } from 'svelte';
 
     let url = '';
     let title = '';
@@ -15,12 +14,16 @@
     $: disabled = !url;
 
     const auto = async () => {
-        const graph = await getPreview(url);
-        if (graph) {
-            title = graph.title;
-            description = graph.description;
-        } else {
-            toast.push('Failed to fetch website data');
+        if (url && title && description) {
+            return;
+        } else if (url) {
+            const graph = await getPreview(url);
+            if (graph) {
+                title = graph.title;
+                description = graph.description;
+            } else {
+                toast.push('Failed to fetch website data');
+            }
         }
     };
 
@@ -33,6 +36,7 @@
             error = false;
         }
     }, 200);
+    $: console.log({ url });
 </script>
 
 <div class="w-56">
@@ -109,7 +113,7 @@
                 debouncedCheck(e.currentTarget.value);
             }}
             bind:value={url}
-            on:paste={e => {
+            on:paste|preventDefault={e => {
                 const text = e.clipboardData?.getData('text');
                 if (text) {
                     url = text;

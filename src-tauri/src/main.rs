@@ -5,22 +5,24 @@
 
 pub mod base;
 mod command;
-use base::{Score, Scores};
+use base::Score;
 use clap::Parser;
+use command::Result;
 use command::*;
 use home::home_dir;
 use lazy_static::lazy_static;
-use notify::{watcher, DebouncedEvent, Watcher};
+use notify_debouncer_full::{
+    new_debouncer,
+    notify::{RecursiveMode, Watcher, EventKind},
+};
 use std::{
     fs::File,
     io::{Read, Write},
     path::PathBuf,
-    sync::{mpsc::channel, Arc, Mutex},
-    thread,
-    time::Duration,
+    sync::{ Arc, Mutex},
+    time::{Duration, SystemTime}
 };
-use tauri::Manager;
-
+use tauri::{AppHandle, Manager};
 lazy_static! {
     pub static ref ARK_SHELF_WORKING_DIR: PathBuf = PathBuf::from(Cli::parse().path);
     pub static ref SCORES_PATH: PathBuf = PathBuf::from(Cli::parse().path)
@@ -44,71 +46,81 @@ struct Cli {
     path: String,
 }
 
-// Initialize file watcher.
-fn init_score_watcher(path: String, scores: Arc<Mutex<Scores>>) {
-    thread::spawn(move || {
-        let (tx, rx) = channel();
-        let mut watcher = watcher(tx, Duration::from_millis(300)).unwrap();
-        watcher
-            .watch(path, notify::RecursiveMode::NonRecursive)
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GraphMetaData {
+    description: Option<String>,
+    title: Option<String>,
+    image_url: Option<String>
+}
+
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PreviewLoaded {
+    url: String,
+    graph: GraphMetaData,
+    created_time: Option<SystemTime>
+}
+
+async fn get_preview(path: &std::path::PathBuf, manager: AppHandle) -> Result<()> {
+    let file_content = std::fs::read_to_string(path)?;
+    let url = url::Url::parse(&file_content)?;
+    let preview_url = format!("{}", url);
+    println!("Preview url {preview_url:?}");
+    let graph_preview = arklib::link::Link::get_preview(preview_url)
+        .await
+        .map_err(|_| CommandError::Arklib)?;
+    let mut created_time = None;
+    if let Ok(meta) = std::fs::metadata(path) {
+        created_time = meta.created().ok();
+    }
+    let graph_data = GraphMetaData {
+        image_url: graph_preview.image,
+        title: graph_preview.title,
+        description: graph_preview.description
+    };  
+    let preview_loaded = PreviewLoaded {
+        url: url.into(),
+        graph: graph_data,
+        created_time
+    };
+    manager.emit_all("preview_loaded", preview_loaded).unwrap();
+    Ok(())
+}
+
+fn init_link_watcher(path: std::path::PathBuf, handle: AppHandle) {
+    std::thread::spawn(move || {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut debouncer = new_debouncer(Duration::from_millis(50), None, tx).unwrap();
+        debouncer
+            .watcher()
+            .watch(&path, RecursiveMode::NonRecursive)
             .unwrap();
+        debouncer
+            .cache()
+            .add_root(&path, RecursiveMode::NonRecursive);
+
         loop {
             match rx.recv() {
-                Ok(event) => match event {
-                    // Append new link into score file
-                    DebouncedEvent::Create(path) => {
-                        let score = Score {
-                            name: path.file_name().unwrap().to_string_lossy().to_string(),
-                            hash: Score::calc_hash(path).expect("Error computing hash"),
-                            value: 0,
-                        };
-                        scores.lock().unwrap().push(score.clone());
-                        dbg!(&scores);
-                        let mut score_file = File::options()
-                            .write(true)
-                            .append(true)
-                            .open(SCORES_PATH.as_path())
-                            .unwrap();
-                        writeln!(score_file, "{}", score.to_string()).unwrap();
-                    }
-                    // Remove from score file
-                    DebouncedEvent::NoticeRemove(path) => {
-                        let removed_link_name =
-                            path.file_name().unwrap().to_string_lossy().to_string();
-                        dbg!(&removed_link_name);
-                        let filtered_scores = scores
-                            .lock()
-                            .unwrap()
-                            .iter()
-                            .filter(|s| s.name != removed_link_name)
-                            .map(|s| s.clone())
-                            .collect::<Vec<_>>();
+                Ok(Ok(events)) => {
+                    events.into_iter().for_each(|event| {
+                        if let EventKind::Create(_) = event.kind    {
+                            event.event.paths.into_iter().for_each(|path| {
+                                let manager = handle.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    let _ = get_preview(&path, manager).await;
+                                });
+                            });
 
-                        *scores.lock().unwrap() = filtered_scores.clone();
-                        dbg!(&scores);
-
-                        let mut buf = String::new();
-                        let mut scores_file = File::options()
-                            .read(true)
-                            .open(SCORES_PATH.as_path())
-                            .unwrap();
-                        scores_file.read_to_string(&mut buf).unwrap();
-
-                        let mut merged_scores_file = File::options()
-                            .write(true)
-                            .truncate(true)
-                            .open(SCORES_PATH.as_path())
-                            .unwrap();
-                        if !filtered_scores.is_empty() {
-                            merged_scores_file
-                                .write_all(Score::into_lines(&filtered_scores).as_bytes())
-                                .unwrap();
-                        }
-                    }
-                    _ => {}
+                        }  
+                    });
                 },
-                Err(e) => {
-                    panic!("{e}")
+                Ok(Err(e)) => {
+                    eprintln!("Errors on with the notifier watcher: {e:?}");
+                },
+                Err(_) => {
+                    eprintln!("Error with Watcher channel!");
+                    break;
                 }
             }
         }
@@ -154,11 +166,9 @@ fn main() {
         .manage(cli)
         .manage(Arc::new(Mutex::new(scores)))
         .setup(|app| {
-            let state_scores = app.state::<Arc<Mutex<Scores>>>();
-            init_score_watcher(
-                ARK_SHELF_WORKING_DIR.to_str().unwrap().to_string(),
-                state_scores.inner().clone(),
-            );
+            let handle = app.handle();
+            let path = (*ARK_SHELF_WORKING_DIR).clone();
+            init_link_watcher(path, handle);
             Ok(())
         })
         .run(tauri::generate_context!())

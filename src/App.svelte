@@ -16,6 +16,8 @@
             $linksInfos = links;
         });
     });
+
+    $: console.log($linksInfos);
 </script>
 
 <div class="relative flex h-screen min-h-screen w-screen flex-col text-white">

@@ -6,8 +6,6 @@ export const createLink = async (
 ): Promise<LinkInfo | undefined> => {
     try {
         const name = await invoke<string>('create_link', {
-            title: data.title,
-            desc: data.desc,
             url: data.url,
         });
         const now = new Date();
@@ -49,15 +47,19 @@ export const readCurrentLinks = async () => {
     const names = await invoke<string[]>('read_link_list');
     const scores = await getScores();
     const linkPromises = names.map(async name => {
-        const link = await invoke<Omit<LinkInfo, 'score' | 'name'>>('read_link', {
-            name,
-        });
-        const score = scores?.find(s => s.name === name);
-        return {
-            ...link,
-            name,
-            score,
-        };
+        try {
+            const link = await invoke<Omit<LinkInfo, 'score' | 'name'>>('read_link', {
+                name,
+            });
+            const score = scores?.find(s => s.name === name);
+            return {
+                ...link,
+                name,
+                score,
+            };
+        } catch (e) {
+            console.log(e);
+        }
     });
 
     const links = await Promise.all(linkPromises);

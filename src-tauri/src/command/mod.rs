@@ -6,7 +6,7 @@ use std::{
 };
 
 mod errors;
-use errors::{Error, Result};
+pub use errors::{CommandError, Result};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
@@ -27,25 +27,20 @@ pub struct LinkScoreMap {
 #[tauri::command]
 /// Create a `.link`
 async fn create_link(
-    title: String,
-    desc: Option<String>,
     url: String,
     state: tauri::State<'_, Cli>,
 ) -> Result<String> {
     let url = Url::parse(url.as_str())?;
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
-        .map_err(|_| Error::Arklib)?;
+        .map_err(|_| CommandError::Arklib)?;
     let domain = url.domain().expect("Url has no domain");
     let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
     // Validate there is not already a resource identical
     if std::fs::metadata(&path).is_ok() {
-        Err(Error::LinkExist)
+        Err(CommandError::LinkExist)
     } else {
-        let mut link = Link::new(url, title, desc);
-        link.write_to_path(&state.path, &path, true)
-            .await
-            .map_err(|_| Error::Arklib)?;
-        Ok(path)
+        std::fs::write(path, url.as_str())?;
+        Ok(format!("{domain}-{}.link", resource.crc32))
     }
 }
 
@@ -87,7 +82,7 @@ async fn read_link_list() -> Vec<String> {
 
 #[tauri::command]
 async fn generate_link_preview(url: String) -> Result<OpenGraph> {
-    Link::get_preview(url).await.map_err(|_| Error::IO)
+    Link::get_preview(url).await.map_err(|_| CommandError::IO)
 }
 
 /// Get the score list
@@ -181,7 +176,8 @@ pub struct LinkWrapper {
 /// Read data from `.link` file
 async fn read_link(name: String, state: tauri::State<'_, Cli>) -> Result<LinkWrapper> {
     let file_path = format!("{}/{name}", &state.path);
-    let link = Link::load(&state.path, &file_path).map_err(|_| Error::Arklib)?;
+    println!("File path {file_path:?}");
+    let link = Link::load(&state.path, &file_path).unwrap();
     let meta = fs::metadata(&file_path)?;
     let created_time = match meta.created() {
         Ok(time) => Some(time),

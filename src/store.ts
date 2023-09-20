@@ -1,5 +1,6 @@
+import { listen } from '@tauri-apps/api/event';
 import { writable, type Updater } from 'svelte/store';
-import type { LinkInfo, SortMode } from './types';
+import type { LinkInfo, PreviewLoaded, SortMode } from './types';
 
 const sortLinks = (links: LinkInfo[], mode: SortMode) => {
     links.sort((a, b) => {
@@ -29,6 +30,11 @@ export const createLinksInfos = (defaultMode: SortMode = 'normal') => {
 
     const { subscribe, update, set } = writable<LinkInfo[]>([]);
 
+    let currentLinks: LinkInfo[] = [];
+    subscribe(links => {
+        currentLinks = links;
+    });
+
     const updateLinks = (updater: Updater<LinkInfo[]>) => {
         update(currentLinks => {
             const updatedLinks = updater(currentLinks);
@@ -36,6 +42,21 @@ export const createLinksInfos = (defaultMode: SortMode = 'normal') => {
             return sortedLinks;
         });
     };
+
+    listen<PreviewLoaded>('preview_loaded', e => {
+        const linkUrl = e.payload.url;
+        if (currentLinks.some(link => link.url === linkUrl)) {
+            update(links => {
+                links.forEach(l => {
+                    if (l.url === linkUrl) {
+                        l.graph = e.payload.graph;
+                    }
+                });
+                console.log('Updated', { links });
+                return links;
+            });
+        }
+    });
 
     return {
         subscribe,

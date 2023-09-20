@@ -25,6 +25,7 @@
     <button
         class="rounded-md p-2 text-red-500 hover:bg-red-500 hover:bg-opacity-20"
         on:click={async () => {
+            console.log('Try to delete', { name });
             const deleted = await deleteLink(name);
             if (!deleted) {
                 toast.push('Error deleting link');

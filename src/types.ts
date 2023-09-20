@@ -10,26 +10,27 @@ export interface LinkInfo {
     name: string;
     created_time?: SystemTime;
     score?: LinkScoreMap;
+    graph?: GraphInfo;
 }
 export interface OpenGraph {
     /// Represents the "og:title" OpenGraph meta tag.
     ///
     /// The title of your object as it should appear within
     /// the graph, e.g., "The Rock".
-    title: string;
+    title?: string;
     /// Represents the "og:description" OpenGraph meta tag
-    description: string;
+    description?: string;
     /// Represents the "og:url" OpenGraph meta tag
-    url: string;
+    url?: string;
     /// Represents the "og:image" OpenGraph meta tag
-    image: string;
+    image?: string;
     /// Represents the "og:type" OpenGraph meta tag
     ///
     /// The type of your object, e.g., "video.movie". Depending on the type
     /// you specify, other properties may also be required.
-    object_type: string;
+    object_type?: string;
     /// Represents the "og:locale" OpenGraph meta tag
-    locale: string;
+    locale?: string;
 }
 export interface LinkScoreMap {
     name: string;
@@ -38,3 +39,15 @@ export interface LinkScoreMap {
 }
 
 export type SortMode = 'normal' | 'date' | 'score';
+
+export type PreviewLoaded = {
+    url: string;
+    graph: GraphInfo;
+    createdTime: SystemTime;
+};
+
+export type GraphInfo = {
+    imageUrl?: string;
+    title?: string;
+    description?: string;
+};
