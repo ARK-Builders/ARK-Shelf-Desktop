@@ -22,7 +22,6 @@
         )}:${format(date.getMinutes())}:${format(date.getSeconds())}`;
     };
 
-    $: console.log('From card', { link });
     $: created_time = displayCreation(link.created_time?.secs_since_epoch);
 </script>
 

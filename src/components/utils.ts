@@ -51,19 +51,15 @@ export const readCurrentLinks = async () => {
     const names = await invoke<string[]>('read_link_list');
     const scores = await getScores();
     const linkPromises = names.map(async name => {
-        try {
-            const link = await invoke<Omit<LinkInfo, 'score' | 'name'>>('read_link', {
-                name,
-            });
-            const score = scores?.find(s => s.name === name);
-            return {
-                ...link,
-                name,
-                score,
-            };
-        } catch (e) {
-            console.log(e);
-        }
+        const link = await invoke<Omit<LinkInfo, 'score' | 'name'>>('read_link', {
+            name,
+        });
+        const score = scores?.find(s => s.name === name);
+        return {
+            ...link,
+            name,
+            score,
+        };
     });
 
     const links = await Promise.all(linkPromises);

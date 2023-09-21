@@ -19,8 +19,8 @@
         } else if (url) {
             const graph = await getPreview(url);
             if (graph) {
-                title = graph.title;
-                description = graph.description;
+                title = graph.title ?? '';
+                description = graph.description ?? '';
             } else {
                 toast.push('Failed to fetch website data');
             }
@@ -36,7 +36,6 @@
             error = false;
         }
     }, 200);
-    $: console.log({ url });
 </script>
 
 <div class="w-56">
@@ -79,10 +78,7 @@
                 desc,
             };
             if ($linksInfos.every(l => l.url !== url)) {
-                const beforeCreate = new Date().getTime();
                 const newLink = await createLink(data);
-                const after = new Date().getTime();
-                console.log('Creation takes', after - beforeCreate);
                 if (newLink) {
                     linksInfos.update(links => {
                         links = links.filter(l => l.url !== url);
