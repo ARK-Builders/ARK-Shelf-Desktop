@@ -10,13 +10,11 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
             - name: Install Rust
-              uses: actions-rs/toolchain@v1
+              uses: dtolnay/rust-toolchain@stable
               with:
-                  toolchain: stable
-                  override: true
                   components: rustfmt, clippy
 
             - name: Setup Node.js
@@ -37,6 +35,9 @@ jobs:
               with:
                   version: 8
                   run_install: true
+
+            - name: Check style
+              run: pnpm lint
 
             - name: Build Release version
               run: pnpm tauri build
