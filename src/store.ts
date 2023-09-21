@@ -52,7 +52,6 @@ export const createLinksInfos = (defaultMode: SortMode = 'normal') => {
                         l.graph = e.payload.graph;
                     }
                 });
-                console.log('Updated', { links });
                 return links;
             });
         }

@@ -10,26 +10,24 @@ use clap::Parser;
 use command::Result;
 use command::*;
 use home::home_dir;
-use lazy_static::lazy_static;
+
 use notify_debouncer_full::{
     new_debouncer,
     notify::{RecursiveMode, Watcher, EventKind},
 };
 use std::{
     fs::File,
-    io::{Read, Write},
     path::PathBuf,
-    sync::{ Arc, Mutex},
+    sync::{ Arc, Mutex, OnceLock},
     time::{Duration, SystemTime}
 };
 use tauri::{AppHandle, Manager};
-lazy_static! {
-    pub static ref ARK_SHELF_WORKING_DIR: PathBuf = PathBuf::from(Cli::parse().path);
-    pub static ref SCORES_PATH: PathBuf = PathBuf::from(Cli::parse().path)
-        .join(".ark")
-        .join("shelf")
-        .join("scores");
-}
+
+
+static ARK_SHELF_WORKING_DIR: OnceLock<PathBuf> = OnceLock::new();
+static SCORES_PATH: OnceLock<PathBuf> = OnceLock::new();
+static METADATA_PATH: OnceLock<PathBuf> = OnceLock::new();
+static PREVIEWS_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 #[derive(Parser, Default, Debug)]
 #[clap(
@@ -62,14 +60,36 @@ struct PreviewLoaded {
     created_time: Option<SystemTime>
 }
 
-async fn get_preview(path: &std::path::PathBuf, manager: AppHandle) -> Result<()> {
+fn init_statics_and_dir() {
+    let cli = Cli::parse();
+    let working_dir = PathBuf::from(&cli.path);
+    ARK_SHELF_WORKING_DIR.set(working_dir).unwrap();
+    let scores_path = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join("shelf").join("scores");
+    SCORES_PATH.set(scores_path).unwrap();
+    let meta_data_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::METADATA_PATH);
+    METADATA_PATH.set(meta_data_folder).unwrap();
+    let preview_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::PREVIEWS_PATH);
+    PREVIEWS_PATH.set(preview_folder).unwrap();
+    std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap()).unwrap();
+    std::fs::create_dir_all(METADATA_PATH.get().unwrap()).unwrap();
+    std::fs::create_dir_all(PREVIEWS_PATH.get().unwrap()).unwrap();
+    
+    let scores_path = SCORES_PATH.get().unwrap();
+    if let Err(_) =  std::fs::metadata(SCORES_PATH.get().unwrap()) {
+        File::create(scores_path).unwrap();
+    }
+}
+
+async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     let file_content = std::fs::read_to_string(path)?;
     let url = url::Url::parse(&file_content)?;
-    let preview_url = format!("{}", url);
-    println!("Preview url {preview_url:?}");
-    let graph_preview = arklib::link::Link::get_preview(preview_url)
+    let resource_id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes()).map_err(|_|CommandError::Arklib)?;
+    let graph_preview = arklib::link::Link::get_preview(url.to_string())
         .await
         .map_err(|_| CommandError::Arklib)?;
+    let image_data = graph_preview.fetch_image().await.ok_or(CommandError::Arklib)?;
+    let preview_folder = PREVIEWS_PATH.get().unwrap();
+    std::fs::write(preview_folder.join(format!("{resource_id}")), image_data)?;
     let mut created_time = None;
     if let Ok(meta) = std::fs::metadata(path) {
         created_time = meta.created().ok();
@@ -88,7 +108,8 @@ async fn get_preview(path: &std::path::PathBuf, manager: AppHandle) -> Result<()
     Ok(())
 }
 
-fn init_link_watcher(path: std::path::PathBuf, handle: AppHandle) {
+fn init_link_watcher(path: &PathBuf, handle: AppHandle) {
+    let path = path.clone();
     std::thread::spawn(move || {
         let (tx, rx) = std::sync::mpsc::channel();
         let mut debouncer = new_debouncer(Duration::from_millis(50), None, tx).unwrap();
@@ -108,7 +129,7 @@ fn init_link_watcher(path: std::path::PathBuf, handle: AppHandle) {
                             event.event.paths.into_iter().for_each(|path| {
                                 let manager = handle.clone();
                                 tauri::async_runtime::spawn(async move {
-                                    let _ = get_preview(&path, manager).await;
+                                    let _ = get_preview(&path, manager ).await;
                                 });
                             });
 
@@ -128,46 +149,27 @@ fn init_link_watcher(path: std::path::PathBuf, handle: AppHandle) {
 }
 
 fn main() {
-    let cli = Cli::parse();
+    init_statics_and_dir();
 
-    std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.as_path().join(".ark").join("shelf")).unwrap();
-    lazy_static::initialize(&ARK_SHELF_WORKING_DIR);
-    lazy_static::initialize(&SCORES_PATH);
-    // Check if the scores file is existed, otherwise create one.
-    let mut scores_file = File::options()
-        .read(true)
-        .open(SCORES_PATH.as_path())
-        .unwrap_or_else(|_| File::create(SCORES_PATH.as_path()).unwrap());
+    let scores_path = SCORES_PATH.get().unwrap();
 
-    let mut scores_string = String::new();
     let mut scores = vec![];
-    scores_file.read_to_string(&mut scores_string).unwrap_or(0);
+    let scores_string = std::fs::read_to_string(scores_path).unwrap();
 
     // Skip if there's no content in the file.
     if !scores_string.is_empty() {
-        scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.as_path());
+        scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.get().unwrap());
     }
 
     dbg!(&scores);
 
-    let mut scores_file = File::options()
-        .write(true)
-        .truncate(true)
-        .open(SCORES_PATH.as_path())
-        .unwrap();
-    // Merge scores item and write to score file.
-    scores_file
-        .write_all(Score::into_lines(&scores).as_bytes())
-        .unwrap();
-
     let builder = tauri::Builder::default();
     let builder = set_command(builder);
     builder
-        .manage(cli)
         .manage(Arc::new(Mutex::new(scores)))
         .setup(|app| {
             let handle = app.handle();
-            let path = (*ARK_SHELF_WORKING_DIR).clone();
+            let path = ARK_SHELF_WORKING_DIR.get().unwrap();
             init_link_watcher(path, handle);
             Ok(())
         })

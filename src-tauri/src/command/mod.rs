@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::{
     fs::{self, File},
     io::Write,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex}, path::PathBuf
 };
 
 mod errors;
@@ -10,7 +10,7 @@ pub use errors::{CommandError, Result};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
-    Cli, ARK_SHELF_WORKING_DIR, SCORES_PATH,
+    ARK_SHELF_WORKING_DIR, SCORES_PATH, METADATA_PATH, PREVIEWS_PATH,
 };
 
 use tauri::{Builder, Runtime};
@@ -28,31 +28,46 @@ pub struct LinkScoreMap {
 /// Create a `.link`
 async fn create_link(
     url: String,
-    state: tauri::State<'_, Cli>,
+    meta_data: arklib::link::Metadata
 ) -> Result<String> {
     let url = Url::parse(url.as_str())?;
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
     let domain = url.domain().expect("Url has no domain");
-    let path = format!("{}/{domain}-{}.link", &state.path, resource.crc32);
+    let file_name = format!("{domain}-{resource}.link");
+    let path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&file_name);
     // Validate there is not already a resource identical
     if std::fs::metadata(&path).is_ok() {
         Err(CommandError::LinkExist)
     } else {
         std::fs::write(path, url.as_str())?;
-        Ok(format!("{domain}-{}.link", resource.crc32))
+        let path = METADATA_PATH.get().unwrap().join(format!("{resource}"));
+        std::fs::write(&path, serde_json::to_string(&meta_data).unwrap())?;
+        Ok(file_name)
     }
 }
 
 #[tauri::command]
 /// Remove a `.link` from directory
-async fn delete_link(name: String, state: tauri::State<'_, Cli>) -> Result<()> {
-    fs::remove_file(format!("{}/{}", &state.path, name))?;
+async fn delete_link(name: String) -> Result<()> {
+    let path = ARK_SHELF_WORKING_DIR.get().unwrap().join(&name);
+    fs::remove_file(&path)?;
+    let resource = name.rsplit("-").enumerate().take_while(|(u,_)| {
+        *u < 2
+    }).map(|(_,b)|{
+        b
+    }).collect::<Vec<_>>();
+    let resource = format!("{}-{}", resource[1], resource[0]);
+    let resource = resource.split(".link").collect::<Vec<_>>()[0];
+    let meta_data_path = METADATA_PATH.get().unwrap().join(resource);
+    let preview_path = PREVIEWS_PATH.get().unwrap().join(resource);
+    fs::remove_file(meta_data_path).ok();
+    fs::remove_file(preview_path).ok();
     Ok(())
 }
 
 fn get_fs_links() -> Vec<DirEntry> {
-    WalkDir::new(ARK_SHELF_WORKING_DIR.as_path())
+    WalkDir::new(ARK_SHELF_WORKING_DIR.get().unwrap())
         .max_depth(1)
         .into_iter()
         .filter(|file| {
@@ -89,11 +104,10 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph> {
 #[tauri::command]
 async fn get_scores(
     scores: tauri::State<'_, Arc<Mutex<Scores>>>,
-    path: tauri::State<'_, Cli>,
 ) -> Result<Scores> {
-    let scores_content = std::fs::read(SCORES_PATH.as_path())?;
+    let scores_content = std::fs::read(SCORES_PATH.get().unwrap())?;
     let scores_content = String::from_utf8(scores_content)?;
-    let scores_files = Score::parse_and_merge(scores_content, &path.path);
+    let scores_files = Score::parse_and_merge(scores_content, ARK_SHELF_WORKING_DIR.get().unwrap());
     let mut guard = scores.lock().unwrap();
     *guard = scores_files.clone();
     Ok(scores_files)
@@ -107,7 +121,7 @@ async fn add(scores: tauri::State<'_, Arc<Mutex<Scores>>>, name: String) -> Resu
         score.value += 1;
         result = Some(score.clone());
         let content = Score::into_lines(&*guard);
-        std::fs::write(SCORES_PATH.as_path(), content).unwrap();
+        std::fs::write(SCORES_PATH.get().unwrap(), content).unwrap();
     }
     Ok(result)
 }
@@ -123,7 +137,7 @@ async fn substract(
         score.value -= 1;
         result = Some(score.clone());
         let content = Score::into_lines(&*guard);
-        std::fs::write(SCORES_PATH.as_path(), content).unwrap();
+        std::fs::write(SCORES_PATH.get().unwrap(), content).unwrap();
     }
     Ok(result)
 }
@@ -139,7 +153,7 @@ async fn create_score(
     let mut guard = scores.lock().unwrap();
     guard.push(score.clone());
     let content = Score::into_lines(&*guard);
-    std::fs::write(SCORES_PATH.as_path(), content)?;
+    std::fs::write(SCORES_PATH.get().unwrap(), content)?;
     Ok(score)
 }
 
@@ -156,7 +170,7 @@ async fn set_scores(
     let mut scores_file = File::options()
         .write(true)
         .truncate(true)
-        .open(SCORES_PATH.as_path())?;
+        .open(SCORES_PATH.get().unwrap())?;
     scores_file.write_all(Score::into_lines(&*guard).as_bytes())?;
     Ok(())
 }
@@ -174,10 +188,9 @@ pub struct LinkWrapper {
 
 #[tauri::command]
 /// Read data from `.link` file
-async fn read_link(name: String, state: tauri::State<'_, Cli>) -> Result<LinkWrapper> {
-    let file_path = format!("{}/{name}", &state.path);
-    println!("File path {file_path:?}");
-    let link = Link::load(&state.path, &file_path).unwrap();
+async fn read_link(name: String) -> Result<LinkWrapper> {
+    let file_path = PathBuf::from(name);
+    let link = Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &file_path).unwrap();
     let meta = fs::metadata(&file_path)?;
     let created_time = match meta.created() {
         Ok(time) => Some(time),
