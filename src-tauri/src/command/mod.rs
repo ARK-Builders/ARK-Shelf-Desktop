@@ -2,7 +2,8 @@ use serde::Serialize;
 use std::{
     fs::{self, File},
     io::Write,
-    sync::{Arc, Mutex}, path::PathBuf
+    path::PathBuf,
+    sync::{Arc, Mutex},
 };
 
 mod errors;
@@ -10,7 +11,7 @@ pub use errors::{CommandError, Result};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
-    ARK_SHELF_WORKING_DIR, SCORES_PATH, METADATA_PATH, PREVIEWS_PATH,
+    ARK_SHELF_WORKING_DIR, METADATA_PATH, PREVIEWS_PATH, SCORES_PATH,
 };
 
 use tauri::{Builder, Runtime};
@@ -26,10 +27,7 @@ pub struct LinkScoreMap {
 
 #[tauri::command]
 /// Create a `.link`
-async fn create_link(
-    url: String,
-    metadata: arklib::link::Metadata
-) -> Result<String> {
+async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
     let url = Url::parse(url.as_str())?;
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
@@ -51,16 +49,13 @@ async fn create_link(
 /// Remove a `.link` from directory
 async fn delete_link(name: String) -> Result<()> {
     let path = ARK_SHELF_WORKING_DIR.get().unwrap().join(&name);
+    let content = fs::read_to_string(&path)?;
+    let id = arklib::id::ResourceId::compute_bytes(content.as_bytes())
+        .map_err(|_| CommandError::Arklib)?;
     fs::remove_file(&path)?;
-    let id_data = name.rsplit("-").enumerate().take_while(|(u,_)| {
-        *u < 2
-    }).map(|(_,b)|{
-        b
-    }).collect::<Vec<_>>();
-    let id = format!("{}-{}", id_data[1], id_data[0]);
-    let id = id.split(".link").collect::<Vec<_>>()[0];
-    let metadata_path = METADATA_PATH.get().unwrap().join(id);
-    let preview_path = PREVIEWS_PATH.get().unwrap().join(id);
+    let id = id.to_string();
+    let metadata_path = METADATA_PATH.get().unwrap().join(&id);
+    let preview_path = PREVIEWS_PATH.get().unwrap().join(&id);
     fs::remove_file(metadata_path).ok();
     fs::remove_file(preview_path).ok();
     Ok(())
@@ -102,9 +97,7 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph> {
 
 /// Get the score list
 #[tauri::command]
-async fn get_scores(
-    scores: tauri::State<'_, Arc<Mutex<Scores>>>,
-) -> Result<Scores> {
+async fn get_scores(scores: tauri::State<'_, Arc<Mutex<Scores>>>) -> Result<Scores> {
     let scores_content = std::fs::read(SCORES_PATH.get().unwrap())?;
     let scores_content = String::from_utf8(scores_content)?;
     let scores_files = Score::parse_and_merge(scores_content, ARK_SHELF_WORKING_DIR.get().unwrap());

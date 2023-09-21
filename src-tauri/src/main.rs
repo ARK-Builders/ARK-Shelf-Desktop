@@ -13,16 +13,15 @@ use home::home_dir;
 
 use notify_debouncer_full::{
     new_debouncer,
-    notify::{RecursiveMode, Watcher, EventKind},
+    notify::{EventKind, RecursiveMode, Watcher},
 };
 use std::{
     fs::File,
     path::PathBuf,
-    sync::{ Arc, Mutex, OnceLock},
-    time::{Duration, SystemTime}
+    sync::{Arc, Mutex, OnceLock},
+    time::{Duration, SystemTime},
 };
 use tauri::{AppHandle, Manager};
-
 
 static ARK_SHELF_WORKING_DIR: OnceLock<PathBuf> = OnceLock::new();
 static SCORES_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -49,7 +48,7 @@ struct Cli {
 struct GraphMetaData {
     description: Option<String>,
     title: Option<String>,
-    image_url: Option<String>
+    image_url: Option<String>,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -57,25 +56,31 @@ struct GraphMetaData {
 struct PreviewLoaded {
     url: String,
     graph: GraphMetaData,
-    created_time: Option<SystemTime>
+    created_time: Option<SystemTime>,
 }
 
 fn init_statics_and_dir() {
     let cli = Cli::parse();
     let working_dir = PathBuf::from(&cli.path);
     ARK_SHELF_WORKING_DIR.set(working_dir).unwrap();
-    let scores_path = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join("shelf").join("scores");
+    let scores_path = PathBuf::from(&cli.path)
+        .join(arklib::STORAGES_FOLDER)
+        .join("scores");
     SCORES_PATH.set(scores_path).unwrap();
-    let metadata_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::METADATA_PATH);
+    let metadata_folder = PathBuf::from(&cli.path)
+        .join(arklib::STORAGES_FOLDER)
+        .join(arklib::METADATA_PATH);
     METADATA_PATH.set(metadata_folder).unwrap();
-    let preview_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::PREVIEWS_PATH);
+    let preview_folder = PathBuf::from(&cli.path)
+        .join(arklib::STORAGES_FOLDER)
+        .join(arklib::PREVIEWS_PATH);
     PREVIEWS_PATH.set(preview_folder).unwrap();
     std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap()).unwrap();
     std::fs::create_dir_all(METADATA_PATH.get().unwrap()).unwrap();
     std::fs::create_dir_all(PREVIEWS_PATH.get().unwrap()).unwrap();
-    
+
     let scores_path = SCORES_PATH.get().unwrap();
-    if let Err(_) =  std::fs::metadata(SCORES_PATH.get().unwrap()) {
+    if let Err(_) = std::fs::metadata(SCORES_PATH.get().unwrap()) {
         File::create(scores_path).unwrap();
     }
 }
@@ -83,11 +88,15 @@ fn init_statics_and_dir() {
 async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     let file_content = std::fs::read_to_string(path)?;
     let url = url::Url::parse(&file_content)?;
-    let id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes()).map_err(|_|CommandError::Arklib)?;
+    let id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes())
+        .map_err(|_| CommandError::Arklib)?;
     let graph_preview = arklib::link::Link::get_preview(url.to_string())
         .await
         .map_err(|_| CommandError::Arklib)?;
-    let image_data = graph_preview.fetch_image().await.ok_or(CommandError::Arklib)?;
+    let image_data = graph_preview
+        .fetch_image()
+        .await
+        .ok_or(CommandError::Arklib)?;
     let preview_folder = PREVIEWS_PATH.get().unwrap();
     std::fs::write(preview_folder.join(format!("{id}")), image_data)?;
     let mut created_time = None;
@@ -97,12 +106,12 @@ async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     let graph_data = GraphMetaData {
         image_url: graph_preview.image,
         title: graph_preview.title,
-        description: graph_preview.description
-    };  
+        description: graph_preview.description,
+    };
     let preview_loaded = PreviewLoaded {
         url: url.into(),
         graph: graph_data,
-        created_time
+        created_time,
     };
     manager.emit_all("preview_loaded", preview_loaded).unwrap();
     Ok(())
@@ -120,25 +129,26 @@ fn init_link_watcher(path: &PathBuf, handle: AppHandle) {
         debouncer
             .cache()
             .add_root(&path, RecursiveMode::NonRecursive);
-
+        let score_path = SCORES_PATH.get().unwrap();
         loop {
             match rx.recv() {
                 Ok(Ok(events)) => {
                     events.into_iter().for_each(|event| {
-                        if let EventKind::Create(_) = event.kind    {
+                        if let EventKind::Create(_) = event.kind {
                             event.event.paths.into_iter().for_each(|path| {
-                                let manager = handle.clone();
-                                tauri::async_runtime::spawn(async move {
-                                    let _ = get_preview(&path, manager ).await;
-                                });
+                                if &path != score_path {
+                                    let manager = handle.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        let _ = get_preview(&path, manager).await;
+                                    });
+                                }
                             });
-
-                        }  
+                        }
                     });
-                },
+                }
                 Ok(Err(e)) => {
                     eprintln!("Errors on with the notifier watcher: {e:?}");
-                },
+                }
                 Err(_) => {
                     eprintln!("Error with Watcher channel!");
                     break;
