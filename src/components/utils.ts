@@ -61,8 +61,13 @@ export const readCurrentLinks = async () => {
             score,
         };
     });
-
-    const links = await Promise.all(linkPromises);
+    const promises = await Promise.allSettled(linkPromises);
+    const links = promises.reduce((lks: LinkInfo[], link) => {
+        if (link.status === 'fulfilled') {
+            lks.push(link.value);
+        }
+        return lks;
+    }, []);
     return links;
 };
 

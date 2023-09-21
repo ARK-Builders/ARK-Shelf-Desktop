@@ -182,8 +182,8 @@ pub struct LinkWrapper {
 #[tauri::command]
 /// Read data from `.link` file
 async fn read_link(name: String) -> Result<LinkWrapper> {
-    let file_path = PathBuf::from(name);
-    let link = Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &file_path).unwrap();
+    let file_path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&name);
+    let link = Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &file_path).map_err(|_|CommandError::Arklib)?;
     let meta = fs::metadata(&file_path)?;
     let created_time = match meta.created() {
         Ok(time) => Some(time),
