@@ -28,7 +28,7 @@ pub struct LinkScoreMap {
 /// Create a `.link`
 async fn create_link(
     url: String,
-    meta_data: arklib::link::Metadata
+    metadata: arklib::link::Metadata
 ) -> Result<String> {
     let url = Url::parse(url.as_str())?;
     let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
@@ -42,7 +42,7 @@ async fn create_link(
     } else {
         std::fs::write(path, url.as_str())?;
         let path = METADATA_PATH.get().unwrap().join(format!("{resource}"));
-        std::fs::write(&path, serde_json::to_string(&meta_data).unwrap())?;
+        std::fs::write(&path, serde_json::to_string(&metadata).unwrap())?;
         Ok(file_name)
     }
 }
@@ -52,16 +52,16 @@ async fn create_link(
 async fn delete_link(name: String) -> Result<()> {
     let path = ARK_SHELF_WORKING_DIR.get().unwrap().join(&name);
     fs::remove_file(&path)?;
-    let resource = name.rsplit("-").enumerate().take_while(|(u,_)| {
+    let id_data = name.rsplit("-").enumerate().take_while(|(u,_)| {
         *u < 2
     }).map(|(_,b)|{
         b
     }).collect::<Vec<_>>();
-    let resource = format!("{}-{}", resource[1], resource[0]);
-    let resource = resource.split(".link").collect::<Vec<_>>()[0];
-    let meta_data_path = METADATA_PATH.get().unwrap().join(resource);
-    let preview_path = PREVIEWS_PATH.get().unwrap().join(resource);
-    fs::remove_file(meta_data_path).ok();
+    let id = format!("{}-{}", id_data[1], id_data[0]);
+    let id = id.split(".link").collect::<Vec<_>>()[0];
+    let metadata_path = METADATA_PATH.get().unwrap().join(id);
+    let preview_path = PREVIEWS_PATH.get().unwrap().join(id);
+    fs::remove_file(metadata_path).ok();
     fs::remove_file(preview_path).ok();
     Ok(())
 }

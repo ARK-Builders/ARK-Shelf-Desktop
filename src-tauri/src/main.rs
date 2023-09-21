@@ -66,8 +66,8 @@ fn init_statics_and_dir() {
     ARK_SHELF_WORKING_DIR.set(working_dir).unwrap();
     let scores_path = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join("shelf").join("scores");
     SCORES_PATH.set(scores_path).unwrap();
-    let meta_data_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::METADATA_PATH);
-    METADATA_PATH.set(meta_data_folder).unwrap();
+    let metadata_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::METADATA_PATH);
+    METADATA_PATH.set(metadata_folder).unwrap();
     let preview_folder = PathBuf::from(&cli.path).join(arklib::STORAGES_FOLDER).join(arklib::PREVIEWS_PATH);
     PREVIEWS_PATH.set(preview_folder).unwrap();
     std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap()).unwrap();
@@ -83,13 +83,13 @@ fn init_statics_and_dir() {
 async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     let file_content = std::fs::read_to_string(path)?;
     let url = url::Url::parse(&file_content)?;
-    let resource_id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes()).map_err(|_|CommandError::Arklib)?;
+    let id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes()).map_err(|_|CommandError::Arklib)?;
     let graph_preview = arklib::link::Link::get_preview(url.to_string())
         .await
         .map_err(|_| CommandError::Arklib)?;
     let image_data = graph_preview.fetch_image().await.ok_or(CommandError::Arklib)?;
     let preview_folder = PREVIEWS_PATH.get().unwrap();
-    std::fs::write(preview_folder.join(format!("{resource_id}")), image_data)?;
+    std::fs::write(preview_folder.join(format!("{id}")), image_data)?;
     let mut created_time = None;
     if let Ok(meta) = std::fs::metadata(path) {
         created_time = meta.created().ok();
