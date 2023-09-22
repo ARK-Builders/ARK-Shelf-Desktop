@@ -4,11 +4,6 @@ pub use arklib::link::{Link, Metadata, OpenGraph};
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LinkScoreMap {
-    pub name: String,
-    pub value: i64,
-}
 
 /// ARK Config
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,9 +37,8 @@ pub struct Score {
 impl Score {
     pub fn new(url: &str) -> Self {
         let id = arklib::id::ResourceId::compute_bytes(url.as_bytes()).unwrap();
-        let id = format!("{}-{}", id.crc32, id.data_size);
-        let name = format!("{}.link", id);
-
+        let id = id.to_string();
+        let name = format!("{id}.link");
         Score {
             id,
             name,
@@ -61,7 +55,7 @@ impl Score {
                     "Error computing RessourceId",
                 )
             })?;
-        Ok(format!("{}-{}", id.crc32, id.data_size))
+        Ok(id.to_string())
     }
     /// Parse scores from string.
     ///
@@ -75,7 +69,7 @@ impl Score {
 
                 dbg!(&mapped);
                 Score {
-                    name: String::new(),
+                    name: format!("{}.link", mapped[0]),
                     id: mapped[0].to_string(),
                     value: i64::from_str_radix(mapped[1], 10).unwrap_or(0),
                 }

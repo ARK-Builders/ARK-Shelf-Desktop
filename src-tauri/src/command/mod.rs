@@ -18,12 +18,6 @@ use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
-#[derive(serde::Serialize)]
-pub struct LinkScoreMap {
-    pub name: String,
-    pub id: String,
-    pub value: i64,
-}
 
 #[tauri::command]
 /// Create a `.link`

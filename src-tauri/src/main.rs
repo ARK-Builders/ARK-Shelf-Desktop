@@ -163,7 +163,6 @@ fn main() {
     init_statics_and_dir();
 
     let scores_path = SCORES_PATH.get().unwrap();
-
     let mut scores = vec![];
     let scores_string = std::fs::read_to_string(scores_path).unwrap();
 

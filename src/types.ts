@@ -33,8 +33,11 @@ export interface OpenGraph {
     locale?: string;
 }
 export interface LinkScoreMap {
+    /** Name of the link file (id.link) */
     name: string;
+    /** Score value  */
     value: number;
+    /** id of the resource  */
     id: string;
 }
 
