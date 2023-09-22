@@ -10,7 +10,7 @@
 
     const add = async () => {
         let s: LinkScoreMap | undefined = undefined;
-        if (score?.hash) {
+        if (score?.id) {
             s = await addScore(score.name);
         } else {
             s = await createScore({ value: 1, url });
@@ -30,7 +30,7 @@
 
     const substract = async () => {
         let s: LinkScoreMap | undefined = undefined;
-        if (score?.hash) {
+        if (score?.id) {
             s = await substractScore(score.name);
         } else {
             s = await createScore({ value: -1, url });

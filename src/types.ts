@@ -35,7 +35,7 @@ export interface OpenGraph {
 export interface LinkScoreMap {
     name: string;
     value: number;
-    hash: string;
+    id: string;
 }
 
 export type SortMode = 'normal' | 'date' | 'score';

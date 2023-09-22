@@ -21,7 +21,7 @@ use walkdir::{DirEntry, WalkDir};
 #[derive(serde::Serialize)]
 pub struct LinkScoreMap {
     pub name: String,
-    pub hash: String,
+    pub id: String,
     pub value: i64,
 }
 
@@ -29,18 +29,20 @@ pub struct LinkScoreMap {
 /// Create a `.link`
 async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
     let url = Url::parse(url.as_str())?;
-    let resource = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
+    let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
     let domain = url.domain().expect("Url has no domain");
-    let file_name = format!("{domain}-{resource}.link");
-    let path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&file_name);
-    // Validate there is not already a resource identical
-    if std::fs::metadata(&path).is_ok() {
+    let file_name = format!("{domain}-{id}.link");
+    let link_path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&file_name);
+
+    // Check that there is no resource with same id yet
+    if std::fs::metadata(&link_path).is_ok() {
         Err(CommandError::LinkExist)
     } else {
-        std::fs::write(path, url.as_str())?;
-        let path = METADATA_PATH.get().unwrap().join(format!("{resource}"));
-        std::fs::write(&path, serde_json::to_string(&metadata).unwrap())?;
+        std::fs::write(link_path, url.as_str())?;
+
+        let meta_path = METADATA_PATH.get().unwrap().join(format!("{id}"));
+        std::fs::write(&meta_path, serde_json::to_string(&metadata).unwrap())?;
         Ok(file_name)
     }
 }
@@ -53,28 +55,13 @@ async fn delete_link(name: String) -> Result<()> {
     let id = arklib::id::ResourceId::compute_bytes(content.as_bytes())
         .map_err(|_| CommandError::Arklib)?;
     fs::remove_file(&path)?;
+
     let id = id.to_string();
     let metadata_path = METADATA_PATH.get().unwrap().join(&id);
     let preview_path = PREVIEWS_PATH.get().unwrap().join(&id);
     fs::remove_file(metadata_path).ok();
     fs::remove_file(preview_path).ok();
     Ok(())
-}
-
-fn get_fs_links() -> Vec<DirEntry> {
-    WalkDir::new(ARK_SHELF_WORKING_DIR.get().unwrap())
-        .max_depth(1)
-        .into_iter()
-        .filter(|file| {
-            file.as_ref()
-                .unwrap()
-                .file_name()
-                .to_str()
-                .unwrap()
-                .ends_with(".link")
-        })
-        .map(|e| e.unwrap())
-        .collect::<Vec<DirEntry>>()
 }
 
 #[tauri::command]
@@ -174,7 +161,8 @@ pub struct LinkWrapper {
     title: String,
     desc: Option<String>,
     url: Url,
-    // // Only shared on desktop
+
+    /// Only used on desktop, not in mobile version
     #[serde(skip_serializing_if = "Option::is_none")]
     created_time: Option<std::time::SystemTime>,
 }
@@ -196,6 +184,22 @@ async fn read_link(name: String) -> Result<LinkWrapper> {
         url: link.url,
         created_time,
     })
+}
+
+fn get_fs_links() -> Vec<DirEntry> {
+    WalkDir::new(ARK_SHELF_WORKING_DIR.get().unwrap())
+        .max_depth(1)
+        .into_iter()
+        .filter(|file| {
+            file.as_ref()
+                .unwrap()
+                .file_name()
+                .to_str()
+                .unwrap()
+                .ends_with(".link")
+        })
+        .map(|e| e.unwrap())
+        .collect::<Vec<DirEntry>>()
 }
 
 pub fn set_command<R: Runtime>(builder: Builder<R>) -> Builder<R> {

@@ -3,6 +3,7 @@ use std::path::Path;
 pub use arklib::link::{Link, Metadata, OpenGraph};
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LinkScoreMap {
     pub name: String,
@@ -32,33 +33,35 @@ pub type Scores = Vec<Score>;
 pub struct Score {
     pub name: String,
 
-    pub hash: String,
+    pub id: String,
+
     // Score could take a negative value.
     pub value: i64,
 }
 
 impl Score {
     pub fn new(url: &str) -> Self {
-        let hash = arklib::id::ResourceId::compute_bytes(url.as_bytes()).unwrap();
-        let hash = format!("{}-{}", hash.crc32, hash.data_size);
-        let name = format!("{}.link", hash);
+        let id = arklib::id::ResourceId::compute_bytes(url.as_bytes()).unwrap();
+        let id = format!("{}-{}", id.crc32, id.data_size);
+        let name = format!("{}.link", id);
+
         Score {
-            hash,
+            id,
             name,
             value: 0,
         }
     }
 
-    pub fn calc_hash(path: impl AsRef<Path>) -> Result<String, std::io::Error> {
+    pub fn calc_id(path: impl AsRef<Path>) -> Result<String, std::io::Error> {
         let file_metadata = std::fs::metadata(&path)?;
-        let resource =
+        let id =
             arklib::id::ResourceId::compute(file_metadata.len(), path).map_err(|_| {
                 std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     "Error computing RessourceId",
                 )
             })?;
-        Ok(format!("{}-{}", resource.crc32, resource.data_size))
+        Ok(format!("{}-{}", id.crc32, id.data_size))
     }
     /// Parse scores from string.
     ///
@@ -73,7 +76,7 @@ impl Score {
                 dbg!(&mapped);
                 Score {
                     name: String::new(),
-                    hash: mapped[0].to_string(),
+                    id: mapped[0].to_string(),
                     value: i64::from_str_radix(mapped[1], 10).unwrap_or(0),
                 }
             })
@@ -112,7 +115,7 @@ impl Score {
             .iter()
             .map(|entry| Score {
                 name: entry.file_name().to_string_lossy().to_string(),
-                hash: Score::calc_hash(entry.path()).expect("Error computing hash"),
+                id: Score::calc_id(entry.path()).expect("Error computing id"),
                 // Default to 0
                 value: 0,
             })
@@ -123,7 +126,7 @@ impl Score {
             .map(|score|
             // Merge score item if the item already existed in to-be-merged scores
             // Item not found in init_scores will be ignored. (Remove from the list)
-            match merge_scores.iter().find(|&s| s.hash == score.hash) {
+            match merge_scores.iter().find(|&s| s.id == score.id) {
             // replace name with file name
             Some(item) => Score { name: score.name.clone(), ..item.clone() },
             None => score.clone(),
@@ -131,16 +134,16 @@ impl Score {
             .collect::<Scores>();
         merged_scores
     }
-    pub fn format(hash: &str, value: i64) -> String {
+    pub fn format(id: &str, value: i64) -> String {
         if value == 0 {
-            return String::from(format!("{hash}: "));
+            return String::from(format!("{id}: "));
         }
-        String::from(format!("{hash}: {value}"))
+        String::from(format!("{id}: {value}"))
     }
     pub fn into_lines(arr: &[Score]) -> String {
         let mut lines = arr
             .iter()
-            .map(|s| Score::format(&s.hash, s.value))
+            .map(|s| Score::format(&s.id, s.value))
             .collect::<Vec<String>>()
             .join("\n");
         lines.push_str("\n");
@@ -150,6 +153,6 @@ impl Score {
 
 impl ToString for Score {
     fn to_string(&self) -> String {
-        Score::format(&self.hash, self.value)
+        Score::format(&self.id, self.value)
     }
 }

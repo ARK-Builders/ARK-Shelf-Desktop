@@ -99,6 +99,7 @@ async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
         .ok_or(CommandError::Arklib)?;
     let preview_folder = PREVIEWS_PATH.get().unwrap();
     std::fs::write(preview_folder.join(format!("{id}")), image_data)?;
+
     let mut created_time = None;
     if let Ok(meta) = std::fs::metadata(path) {
         created_time = meta.created().ok();
