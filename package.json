@@ -1,21 +1,46 @@
 {
-  "name": "ark-shelf-desktop",
-  "private": "true",
-  "scripts": {
-    "tauri": "tauri",
-    "dev": "cd app && BROWSER=none craco start",
-    "build": "cd app && craco build"
-  },
-  "workspaces": [
-    "app"
-  ],
-  "dependencies": {
-    "@tauri-apps/api": "^1.0.0",
-    "next": "^12.1.6"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^1.0.0"
-  },
-  "version": "0.1.0",
-  "license": "MIT"
+    "name": "ark-shelf-desktop",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "tauri dev",
+        "build": "tauri build",
+        "preview": "vite preview",
+        "check": "svelte-check --tsconfig ./tsconfig.json",
+        "lint": "pnpm check && eslint . --fix && cargo fmt --all --manifest-path src-tauri/Cargo.toml -- --check",
+        "format": "prettier . --write"
+    },
+    "dependencies": {
+        "@tauri-apps/api": "^1.4.0"
+    },
+    "devDependencies": {
+        "@iconify-json/ic": "^1.1.14",
+        "@iconify-json/line-md": "^1.1.29",
+        "@iconify-json/mdi": "^1.1.54",
+        "@sveltejs/vite-plugin-svelte": "^2.4.2",
+        "@tauri-apps/cli": "^1.4.0",
+        "@tsconfig/svelte": "^5.0.0",
+        "@typescript-eslint/eslint-plugin": "^6.6.0",
+        "@typescript-eslint/parser": "^6.6.0",
+        "@zerodevx/svelte-toast": "^0.9.5",
+        "autoprefixer": "^10.4.15",
+        "eslint": "^8.48.0",
+        "eslint-plugin-svelte": "^2.33.0",
+        "flowbite": "^1.8.1",
+        "flowbite-svelte": "^0.44.15",
+        "postcss": "^8.4.29",
+        "prettier": "^3.0.3",
+        "prettier-plugin-organize-imports": "^3.2.3",
+        "prettier-plugin-svelte": "^3.0.3",
+        "prettier-plugin-tailwindcss": "^0.5.4",
+        "svelte": "^4.0.5",
+        "svelte-check": "^3.4.6",
+        "svelte-preprocess": "^5.0.4",
+        "tailwindcss": "^3.3.3",
+        "tslib": "^2.6.0",
+        "typescript": "^5.0.2",
+        "unplugin-icons": "^0.17.0",
+        "vite": "^4.4.4"
+    }
 }
