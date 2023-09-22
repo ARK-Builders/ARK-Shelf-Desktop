@@ -41,7 +41,7 @@ export interface LinkScoreMap {
     id: string;
 }
 
-export type SortMode = 'normal' | 'date' | 'score';
+export type SortMode = 'date' | 'score';
 
 export type PreviewLoaded = {
     url: string;

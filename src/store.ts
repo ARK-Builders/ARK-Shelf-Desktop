@@ -5,8 +5,6 @@ import type { LinkInfo, PreviewLoaded, SortMode } from './types';
 const sortLinks = (links: LinkInfo[], mode: SortMode) => {
     links.sort((a, b) => {
         switch (mode) {
-            case 'normal':
-                return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
             case 'date':
                 return (
                     (b.created_time?.secs_since_epoch ?? 0) -
@@ -21,7 +19,7 @@ const sortLinks = (links: LinkInfo[], mode: SortMode) => {
     return links;
 };
 
-export const createLinksInfos = (defaultMode: SortMode = 'normal') => {
+export const createLinksInfos = (defaultMode: SortMode = 'date') => {
     const mode = writable(defaultMode);
     let currentMode = defaultMode;
     mode.subscribe(m => {

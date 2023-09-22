@@ -2,7 +2,6 @@
     import { toast } from '@zerodevx/svelte-toast';
     import { linksInfos } from '../store';
     import { createLink, debounce, getPreview } from './utils';
-    import Alphabetical from '~icons/ic/outline-sort-by-alpha';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
 
@@ -42,14 +41,6 @@
     <div class="flex w-full justify-between">
         <button
             class="rounded-md p-2"
-            class:bg-green-400={$mode === 'normal'}
-            on:click={() => {
-                linksInfos.setMode('normal');
-            }}>
-            <Alphabetical />
-        </button>
-        <button
-            class="rounded-md p-2"
             class:bg-green-400={$mode === 'date'}
             on:click={() => {
                 linksInfos.setMode('date');
@@ -68,7 +59,8 @@
     <form
         class="sticky top-0 flex flex-col space-y-2"
         on:submit|preventDefault={async e => {
-            const formData = new FormData(e.currentTarget);
+            const form = e.currentTarget;
+            const formData = new FormData(form);
             const title = formData.get('title')?.toString() ?? '';
             const url = formData.get('url')?.toString() ?? '';
             const desc = formData.get('description')?.toString();
@@ -85,6 +77,7 @@
                         links.push(newLink);
                         return links;
                     });
+                    form.reset();
                     toast.push('Link created!');
                 } else {
                     toast.push('Error creating link');
