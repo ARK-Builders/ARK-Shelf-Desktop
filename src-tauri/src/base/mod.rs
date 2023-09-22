@@ -4,7 +4,6 @@ pub use arklib::link::{Link, Metadata, OpenGraph};
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
 
-
 /// ARK Config
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -39,22 +38,17 @@ impl Score {
         let id = arklib::id::ResourceId::compute_bytes(url.as_bytes()).unwrap();
         let id = id.to_string();
         let name = format!("{id}.link");
-        Score {
-            id,
-            name,
-            value: 0,
-        }
+        Score { id, name, value: 0 }
     }
 
     pub fn calc_id(path: impl AsRef<Path>) -> Result<String, std::io::Error> {
         let file_metadata = std::fs::metadata(&path)?;
-        let id =
-            arklib::id::ResourceId::compute(file_metadata.len(), path).map_err(|_| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "Error computing RessourceId",
-                )
-            })?;
+        let id = arklib::id::ResourceId::compute(file_metadata.len(), path).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Error computing ResourceId",
+            )
+        })?;
         Ok(id.to_string())
     }
     /// Parse scores from string.

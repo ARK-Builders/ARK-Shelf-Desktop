@@ -18,7 +18,6 @@ use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
-
 #[tauri::command]
 /// Create a `.link`
 async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
