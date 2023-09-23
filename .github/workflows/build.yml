@@ -3,7 +3,11 @@ name: Build
 env:
     CARGO_TERM_COLOR: always
 
-on: pull_request
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
     build:
