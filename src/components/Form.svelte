@@ -1,44 +1,44 @@
 <script lang="ts">
     import { toast } from '@zerodevx/svelte-toast';
     import { linksInfos } from '../store';
-    import { createLink, debounce, getPreview } from './utils';
+    import { createLink, getPreview } from './utils';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
 
-    let url = '';
-    let title = '';
-    let description = '';
     const mode = linksInfos.mode;
 
-    $: disabled = !url;
+    // Used by App.svelte
+    export let url = '';
+    export let show = false;
 
-    const auto = async () => {
-        if (url && title && description) {
-            return;
-        } else if (url) {
+    let showMeta = false;
+    let inputWaitTime = 1500
+    let timer;
+    let titleElement: HTMLInputElement;
+    let descriptionElement: HTMLInputElement;
+
+    // Waits inputWaitTime after every new keypress into the URL form before trying for a preview and open the meta fields
+    // This might seem like a lot but most people type with staggered delays, 1500ms as a starting point seems a decent compromise
+    // If delay time is hit with an invalid url,then increase inputWaitTime by 750ms to accomodate slower typing and reduce notifications. 
+    const debounce = async () => {
+		clearTimeout(timer);
+        timer = setTimeout( async () => {
+            showMeta = true;
             const graph = await getPreview(url);
             if (graph) {
-                title = graph.title ?? '';
-                description = graph.description ?? '';
+                titleElement.value = graph.title ?? '';
+                descriptionElement.value = graph.description ?? '';
             } else {
+                inputWaitTime += 750
                 toast.push('Failed to fetch website data');
             }
-        }
-    };
-
-    let error = false;
-
-    const debouncedCheck = debounce((url: string) => {
-        if ($linksInfos.some(l => l.url === url)) {
-            error = true;
-        } else {
-            error = false;
-        }
-    }, 200);
+		}, inputWaitTime);
+	}
 </script>
 
 <div class="w-56">
     <div class="flex w-full justify-between">
+        <!-- Sort by Calendar Button -->
         <button
             class="rounded-md p-2"
             class:bg-green-400={$mode === 'date'}
@@ -47,6 +47,8 @@
             }}
             ><Calendar />
         </button>
+
+        <!-- Sort by Score button -->
         <button
             class="rounded-md p-2"
             class:bg-green-400={$mode === 'score'}
@@ -56,6 +58,8 @@
             <Scores />
         </button>
     </div>
+
+    <!-- Link Creation Form -->
     <form
         class="sticky top-0 flex flex-col space-y-2"
         on:submit|preventDefault={async e => {
@@ -69,11 +73,15 @@
                 url,
                 desc,
             };
-            if ($linksInfos.every(l => l.url !== url)) {
+            if ($linksInfos.some(link => link.url != url)) {
+                toast.push("There is already a link with the same URL")
+                return
+            }
+            if ($linksInfos.every(link => link.url !== url)) {
                 const newLink = await createLink(data);
                 if (newLink) {
                     linksInfos.update(links => {
-                        links = links.filter(l => l.url !== url);
+                        links = links.filter(link => link.url !== url);
                         links.push(newLink);
                         return links;
                     });
@@ -82,12 +90,12 @@
                 } else {
                     toast.push('Error creating link');
                 }
+                show = false;
             }
         }}>
+
+        <!-- URL Field -->
         <label for="url" aria-label="URL" />
-        {#if error}
-            <p class="break-words text-red-500">There is already a link with the same URL</p>
-        {/if}
         <input
             type="text"
             id="url"
@@ -95,43 +103,40 @@
             required
             placeholder="URL*"
             class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
-            on:keyup={e => {
-                debouncedCheck(e.currentTarget.value);
-            }}
-            on:change={e => {
-                debouncedCheck(e.currentTarget.value);
-            }}
             bind:value={url}
-            on:paste|preventDefault={e => {
-                const text = e.clipboardData?.getData('text');
-                if (text) {
-                    url = text;
-                    description = '';
-                    title = '';
-                }
-            }} />
-        <label for="title" aria-label="Title" />
-        <input
+            on:input={debounce}
+        />
+
+        <!-- 
+        Meta Fields
+        If the input url debounce timeout has been triggered, show the title and description fields
+        Title is autopopulated if possible  
+        -->
+        {#if showMeta}
+            <label for="title" aria-label="Title" />
+            <input
             type="text"
             id="title"
             name="title"
             required
             placeholder="Title*"
-            bind:value={title}
-            class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500" />
-        <label for="description" aria-label="Optional description" />
-        <input
+            bind:this={titleElement}
+            class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
+            />
+            <label for="description" aria-label="Optional description" />
+            <input
             type="text"
             name="description"
-            bind:value={description}
+            bind:this={descriptionElement}
             placeholder="Description (Optional)"
             class="rounded-md bg-neutral-950 px-2 py-3 outline-none ring-1 ring-neutral-500"
-            id="description" />
+            id="description"
+            />
+        {/if}
+
+        <!-- Create Button -->
         <div class="flex justify-between">
-            <button type="submit" class="pl-2 text-blue-400" disabled={error}>CREATE</button>
-            <button class="pr-2 text-rose-700" {disabled} type="button" on:click={auto}>
-                AUTO FILLED
-            </button>
+            <button type="submit" class="pl-2 text-blue-400">CREATE</button>
         </div>
     </form>
 </div>
