@@ -15,7 +15,7 @@ use crate::{
 };
 
 use tauri::{Builder, Runtime};
-use url::{Url, ParseError};
+use url::{ParseError, Url};
 use walkdir::{DirEntry, WalkDir};
 
 #[tauri::command]
@@ -24,8 +24,8 @@ async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<St
     let url = match Url::parse(url.as_str()) {
         Ok(val) => val,
         Err(e) => match e {
-            ParseError::RelativeUrlWithoutBase => { Url::parse(format!("http://{}", url).as_str())? }
-            _ => return Err(e.into())
+            ParseError::RelativeUrlWithoutBase => Url::parse(format!("http://{}", url).as_str())?,
+            _ => return Err(e.into()),
         },
     };
     let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
