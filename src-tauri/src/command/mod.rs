@@ -15,13 +15,19 @@ use crate::{
 };
 
 use tauri::{Builder, Runtime};
-use url::Url;
+use url::{ParseError, Url};
 use walkdir::{DirEntry, WalkDir};
 
 #[tauri::command]
 /// Create a `.link`
 async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
-    let url = Url::parse(url.as_str())?;
+    let url = match Url::parse(url.as_str()) {
+        Ok(val) => val,
+        Err(e) => match e {
+            ParseError::RelativeUrlWithoutBase => Url::parse(format!("http://{}", url).as_str())?,
+            _ => return Err(e.into()),
+        },
+    };
     let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
     let domain = url.domain().expect("Url has no domain");
