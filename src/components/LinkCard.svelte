@@ -1,9 +1,9 @@
 <script lang="ts">
+    import { Tooltip } from 'flowbite-svelte';
     import type { LinkInfo } from '../types';
     import Description from './Description.svelte';
     import LinkFooter from './LinkFooter.svelte';
     import Title from './Title.svelte';
-    import { Tooltip } from 'flowbite-svelte';
     import { getPreview } from './utils';
 
     export let link: LinkInfo;
@@ -45,10 +45,10 @@
 
 <div class="w-full break-all rounded bg-neutral-850 p-4">
     <Title title={link.title} />
-    <Description description={link.desc} />
     {#if link.created_time}
-        <div class="text-xs">{created_time}</div>
+        <div class="text-xs py-2">{created_time}</div>
     {/if}
+    <Description description={link.desc} />
     <LinkFooter name={link.name} url={link.url} score={link.score} />
 </div>
 <Tooltip placement="bottom" class="z-10 mx-2 max-w-[calc(100vw-2rem)] bg-neutral-500">

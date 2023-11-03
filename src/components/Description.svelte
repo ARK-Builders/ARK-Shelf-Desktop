@@ -8,7 +8,7 @@
 </script>
 
 <div class="flex items-start pb-2">
-    <p class="grow">
+    <p class="grow text-xs">
         {#if show && description}
             {description}
         {/if}
