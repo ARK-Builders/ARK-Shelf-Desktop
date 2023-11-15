@@ -5,11 +5,12 @@
 
 pub mod base;
 mod command;
+mod cli;
 use base::Score;
 use clap::Parser;
 use command::Result;
 use command::*;
-use home::home_dir;
+use crate::cli::*;
 
 use notify_debouncer_full::{
     new_debouncer,
@@ -27,21 +28,6 @@ static ARK_SHELF_WORKING_DIR: OnceLock<PathBuf> = OnceLock::new();
 static SCORES_PATH: OnceLock<PathBuf> = OnceLock::new();
 static METADATA_PATH: OnceLock<PathBuf> = OnceLock::new();
 static PREVIEWS_PATH: OnceLock<PathBuf> = OnceLock::new();
-
-#[derive(Parser, Default, Debug)]
-#[clap(
-    name = "ARK Shelf Desktop",
-    about = "Desktop Version of ARK Shelf, put you bookmarks when surfing."
-)]
-struct Cli {
-    #[clap(
-        short,
-        long,
-        help = "Path to store .link file", 
-        default_value_t = format!("{}/.ark-shelf",home_dir().unwrap().display())
-    )]
-    path: String,
-}
 
 #[derive(serde::Serialize, Clone)]
 #[serde(rename_all = "camelCase")]

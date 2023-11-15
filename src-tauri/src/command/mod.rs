@@ -11,33 +11,29 @@ pub use errors::{CommandError, Result};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
-    ARK_SHELF_WORKING_DIR, METADATA_PATH, PREVIEWS_PATH, SCORES_PATH,
+    Cli, ARK_SHELF_WORKING_DIR, METADATA_PATH, PREVIEWS_PATH, SCORES_PATH,
 };
 
 use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
+#[derive(serde::Serialize)]
+pub struct LinkScoreMap {
+    pub name: String,
+    pub hash: String,
+    pub value: i64
+}
+
 #[tauri::command]
 /// Create a `.link`
-async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
-    let url = Url::parse(url.as_str())?;
-    let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
-        .map_err(|_| CommandError::Arklib)?;
-    let domain = url.domain().expect("Url has no domain");
-    let file_name = format!("{domain}-{id}.link");
-    let link_path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&file_name);
-
-    // Check that there is no resource with same id yet
-    if std::fs::metadata(&link_path).is_ok() {
-        Err(CommandError::LinkExist)
-    } else {
-        std::fs::write(link_path, url.as_str())?;
-
-        let meta_path = METADATA_PATH.get().unwrap().join(format!("{id}"));
-        std::fs::write(&meta_path, serde_json::to_string(&metadata).unwrap())?;
-        Ok(file_name)
-    }
+async fn create_link(
+    url: String,
+    state: tauri::State<'_, Cli> , 
+    metadata: arklib::link::Metadata
+) -> Result<()> {
+    super::create_link(&url, &state.path, metadata).expect("Error creating link");
+    Ok(())
 }
 
 #[tauri::command]
