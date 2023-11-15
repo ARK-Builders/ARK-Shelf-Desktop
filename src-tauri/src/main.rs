@@ -4,13 +4,13 @@
 )]
 
 pub mod base;
-mod command;
 mod cli;
+mod command;
+use crate::cli::*;
 use base::Score;
 use clap::Parser;
 use command::Result;
 use command::*;
-use crate::cli::*;
 
 use notify_debouncer_full::{
     new_debouncer,

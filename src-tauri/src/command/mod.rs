@@ -22,15 +22,15 @@ use walkdir::{DirEntry, WalkDir};
 pub struct LinkScoreMap {
     pub name: String,
     pub hash: String,
-    pub value: i64
+    pub value: i64,
 }
 
 #[tauri::command]
 /// Create a `.link`
 async fn create_link(
     url: String,
-    state: tauri::State<'_, Cli> , 
-    metadata: arklib::link::Metadata
+    state: tauri::State<'_, Cli>,
+    metadata: arklib::link::Metadata,
 ) -> Result<()> {
     super::create_link(&url, &state.path, metadata).expect("Error creating link");
     Ok(())

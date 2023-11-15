@@ -27,8 +27,7 @@ impl Cli {
                         title: l.title.clone(),
                         desc: l.description.clone(),
                     };
-                    create_link(&l.url, &self.path, metadata)
-                        .expect("Creating Link");
+                    create_link(&l.url, &self.path, metadata).expect("Creating Link");
                     return true;
                 }
             }
@@ -59,10 +58,11 @@ pub struct AddLink {
 pub fn create_link(
     url: &str,
     root_path: &str,
-    metadata: arklib::link::Metadata
+    metadata: arklib::link::Metadata,
 ) -> Result<(), String> {
-    let url = Url::parse(url).expect("Error parsing url");;
-    let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes()).expect("Error compute resource from url");
+    let url = Url::parse(url).expect("Error parsing url");
+    let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
+        .expect("Error compute resource from url");
     let domain = url.domain().expect("Url has no domain");
     let path = format!("{root_path}/{domain}-{id}.link");
     let mut link = arklib::link::Link::new(url, metadata.title, metadata.desc);
