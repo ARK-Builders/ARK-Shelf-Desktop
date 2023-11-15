@@ -1,6 +1,6 @@
 use std::path::Path;
 
-pub use arklib::link::{Link, Metadata, OpenGraph};
+pub use arklib::link::{Link, OpenGraph};
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
 

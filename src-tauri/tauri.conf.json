@@ -15,6 +15,44 @@
     "allowlist": {
       "all": true
     },
+    "cli": {
+        "args": [
+            {
+                "name": "path",
+                "takesValue": true
+            },
+            {
+                "name": "add",
+                "takesValue": false
+            }
+        ],
+        "subcommands": {
+            "link": {
+                "subcommands": {
+                    "add": {
+                        "args": [
+                            {
+                                "name": "path",
+                                "takesValue": true
+                            },
+                            {
+                                "name": "url",
+                                "takesValue": true
+                            },
+                            {
+                                "name": "title",
+                                "takesValue": true
+                            },
+                            {
+                                "name": "description",
+                                "takesValue": true
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    },
     "bundle": {
       "active": true,
       "category": "DeveloperTool",

@@ -12,7 +12,7 @@ A dekstop version of ARK Shelf.
 
 ### Tauri requirements:
 
-- Debian:
+-   Debian:
 
     ```bash
     sudo apt update
@@ -26,18 +26,17 @@ A dekstop version of ARK Shelf.
         librsvg2-dev
     ```
 
--  Windows:
+-   Windows:
 
     Install Microsoft Visual Studio C++ build tools [Build tools](https://visualstudio.microsoft.com/fr/visual-cpp-build-tools/)
 
--  MacOS:
+-   MacOS:
 
     ```bash
     xcode-select --install
     ```
 
-
-Create a build directory for tauri<sup>[*](https://github.com/tauri-apps/tauri/issues/3142)</sup>.
+Create a build directory for tauri<sup>[\*](https://github.com/tauri-apps/tauri/issues/3142)</sup>.
 
 ```sh
 mkdir dist
@@ -70,7 +69,6 @@ pnpm tauri build
 ```
 
 This will output binaries in `./src-tauri/target/release`
-
 
 ## Note For AppImage Build
 

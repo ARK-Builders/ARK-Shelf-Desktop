@@ -1,9 +1,9 @@
 <script lang="ts">
+    import { Tooltip } from 'flowbite-svelte';
     import type { LinkInfo } from '../types';
     import Description from './Description.svelte';
     import LinkFooter from './LinkFooter.svelte';
     import Title from './Title.svelte';
-    import { Tooltip } from 'flowbite-svelte';
     import { getPreview } from './utils';
 
     export let link: LinkInfo;
@@ -28,7 +28,7 @@
         if (link.graph) {
             return link.graph;
         }
-        const preview = await getPreview(link.url);
+        const preview = await getPreview(link);
         return {
             imageUrl: preview?.image,
             title: preview?.title,

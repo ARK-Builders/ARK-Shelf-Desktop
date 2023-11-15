@@ -2,7 +2,7 @@
     import Eye from '~icons/mdi/eye';
     import EyeOff from '~icons/mdi/eye-off';
 
-    export let description: string | undefined;
+    export let description: string | null | undefined;
 
     let show = true;
 </script>
