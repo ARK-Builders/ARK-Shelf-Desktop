@@ -15,6 +15,36 @@
     "allowlist": {
       "all": true
     },
+    "cli": {
+        "description": "Ark Shelf Desktop cli command",
+        "longDescription": "CLI command prior running Ark Shelf Desktop GUI",
+        "beforeHelp": "",
+        "afterHelp": "",
+        "args": [
+            {
+                "name": "path",
+                "takesValue": true
+            },
+            {
+                "name": "ladd"
+            }
+        ],
+        "subcommands": {
+            "link": {
+                "subcommands": {
+                    "add": {
+                        "args": [
+                            {
+                                "name": "add",
+                                "takesValue": true,
+                                "multiple": true
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    },
     "bundle": {
       "active": true,
       "category": "DeveloperTool",

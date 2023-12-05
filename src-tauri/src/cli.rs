@@ -1,20 +1,10 @@
 use arklib::link::Metadata;
-use clap::{Parser, Subcommand};
 use home::home_dir;
 use url::Url;
 
-#[derive(Parser, Default, Debug)]
-#[clap(
-    name = "ARK Shelf Desktop",
-    about = "Desktop Version of ARK Shelf, put you bookmarks when surfing."
-)]
+#[derive(Default, Debug)]
 pub struct Cli {
-    #[clap(
-        short, long, help = "Path to store .link file", 
-        default_value_t = format!("{}/.ark-shelf",home_dir().expect("Can't find home dir").display())
-    )]
     pub path: String,
-    #[clap(subcommand)]
     pub link: Option<Link>,
 }
 
@@ -36,21 +26,16 @@ impl Cli {
     }
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Debug)]
 pub enum Link {
     /// Adds a new link
     Add(AddLink),
 }
 
-#[derive(Parser, Debug)]
+#[derive(Default, Debug)]
 pub struct AddLink {
-    #[clap(short, long)]
     pub url: String,
-
-    #[clap(short, long)]
     pub title: String,
-
-    #[clap(short, long)]
     pub description: Option<String>,
 }
 

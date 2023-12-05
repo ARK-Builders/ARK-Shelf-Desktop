@@ -8,17 +8,20 @@ mod cli;
 mod command;
 use crate::cli::*;
 use base::Score;
-use clap::Parser;
-use command::Result;
-use command::*;
+use base::Scores;
+use command::errors::{CommandError, Result};
+use command::subcommand::process_subcommand;
+use command::subcommand::{self, add, set_command};
 
 use notify_debouncer_full::{
     new_debouncer,
     notify::{EventKind, RecursiveMode, Watcher},
 };
+use std::path;
 use std::{
     fs::File,
-    path::PathBuf,
+    path::{Path, PathBuf},
+    str::FromStr,
     sync::{Arc, Mutex, OnceLock},
     time::{Duration, SystemTime},
 };
@@ -45,19 +48,15 @@ struct PreviewLoaded {
     created_time: Option<SystemTime>,
 }
 
-fn init_statics_and_dir() {
-    let cli = Cli::parse();
-    let working_dir = PathBuf::from(&cli.path);
-    ARK_SHELF_WORKING_DIR.set(working_dir).unwrap();
-    let scores_path = PathBuf::from(&cli.path)
-        .join(arklib::STORAGES_FOLDER)
-        .join("scores");
+fn init_statics_and_dir(path: PathBuf) {
+    ARK_SHELF_WORKING_DIR.set(path.clone()).unwrap();
+    let scores_path = path.join(arklib::STORAGES_FOLDER).join("scores");
     SCORES_PATH.set(scores_path).unwrap();
-    let metadata_folder = PathBuf::from(&cli.path)
+    let metadata_folder = path
         .join(arklib::STORAGES_FOLDER)
         .join(arklib::METADATA_PATH);
     METADATA_PATH.set(metadata_folder).unwrap();
-    let preview_folder = PathBuf::from(&cli.path)
+    let preview_folder = path
         .join(arklib::STORAGES_FOLDER)
         .join(arklib::PREVIEWS_PATH);
     PREVIEWS_PATH.set(preview_folder).unwrap();
@@ -69,6 +68,21 @@ fn init_statics_and_dir() {
     if let Err(_) = std::fs::metadata(SCORES_PATH.get().unwrap()) {
         File::create(scores_path).unwrap();
     }
+}
+
+fn init_scores(scores_mutex: tauri::State<'_, Arc<Mutex<Scores>>>) {
+    let scores_path = SCORES_PATH.get().unwrap();
+    let scores_string = std::fs::read_to_string(scores_path).unwrap();
+    let mut scores = scores_mutex.lock().unwrap();
+
+    // Skip if there's no content in the file.
+    if !scores_string.is_empty() {
+        let mut score: Scores =
+            Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.get().unwrap());
+        scores.append(&mut score)
+    }
+
+    dbg!(&scores);
 }
 
 async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
@@ -145,26 +159,65 @@ fn init_link_watcher(path: &PathBuf, handle: AppHandle) {
     });
 }
 
+fn cli_example(app: tauri::AppHandle) {
+    println!("sleeping for example");
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    app.exit(0);
+}
+
+fn cli_unknown_arg(key: String, app: tauri::AppHandle) {
+    println!("sleeping for unhandled cli arg: {}", key);
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    app.exit(1);
+}
+
 fn main() {
-    init_statics_and_dir();
-
-    let scores_path = SCORES_PATH.get().unwrap();
-    let mut scores = vec![];
-    let scores_string = std::fs::read_to_string(scores_path).unwrap();
-
-    // Skip if there's no content in the file.
-    if !scores_string.is_empty() {
-        scores = Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.get().unwrap());
-    }
-
-    dbg!(&scores);
-
+    let scores: Vec<Score> = Vec::new();
     let builder = tauri::Builder::default();
     let builder = set_command(builder);
     builder
-        .manage(Arc::new(Mutex::new(scores)))
         .setup(|app| {
             let handle = app.handle();
+            handle.manage(Arc::new(Mutex::new(scores)));
+            let matches = app.get_cli_matches()?;
+            let scores: tauri::State<'_, Arc<Mutex<Scores>>> = app.state();
+
+            let scores: tauri::State<'_, Arc<Mutex<Scores>>> = scores.clone();
+            let path_buf = ARK_SHELF_WORKING_DIR.get_or_init(|| std::env::current_dir().unwrap());
+            init_statics_and_dir(path_buf.clone());
+            init_scores(scores.clone());
+
+            if matches.args.len() > 0 {
+                for (key, value) in matches.args {
+                    if value.occurrences > 0 {
+                        match key.as_str() {
+                            "path" => {
+                                let path = value.value.as_str().unwrap();
+                                let path_buf = PathBuf::from_str(path)?;
+                                let scores: tauri::State<'_, Arc<Mutex<Scores>>> = scores.clone();
+                                init_statics_and_dir(path_buf);
+                                init_scores(scores);
+                            }
+                            "add" => {
+                                let path = ARK_SHELF_WORKING_DIR
+                                    .get_or_init(|| std::env::current_dir().unwrap());
+                                let manager = handle.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    let _ = get_preview(&path, manager).await;
+                                });
+                            }
+                            _ => cli_unknown_arg(key, app.handle()),
+                        }
+                    }
+                }
+            }
+
+            if let Some(sub) = matches.subcommand {
+                handle.manage(Arc::new(Mutex::new(Cli::default())));
+                let mutex_cli: tauri::State<'_, Arc<Mutex<Cli>>> = app.state();
+                process_subcommand(sub, mutex_cli, handle.clone());
+            }
+
             let path = ARK_SHELF_WORKING_DIR.get().unwrap();
             init_link_watcher(path, handle);
             Ok(())
