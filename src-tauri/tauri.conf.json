@@ -16,17 +16,14 @@
       "all": true
     },
     "cli": {
-        "description": "Ark Shelf Desktop cli command",
-        "longDescription": "CLI command prior running Ark Shelf Desktop GUI",
-        "beforeHelp": "",
-        "afterHelp": "",
         "args": [
             {
                 "name": "path",
                 "takesValue": true
             },
             {
-                "name": "ladd"
+                "name": "add",
+                "takesValue": true
             }
         ],
         "subcommands": {
@@ -35,9 +32,20 @@
                     "add": {
                         "args": [
                             {
-                                "name": "add",
-                                "takesValue": true,
-                                "multiple": true
+                                "name": "path",
+                                "takesValue": true
+                            },
+                            {
+                                "name": "url",
+                                "takesValue": true
+                            },
+                            {
+                                "name": "title",
+                                "takesValue": true
+                            },
+                            {
+                                "name": "description",
+                                "takesValue": true
                             }
                         ]
                     }

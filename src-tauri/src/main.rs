@@ -13,6 +13,8 @@ use command::errors::{CommandError, Result};
 use command::subcommand::process_subcommand;
 use command::subcommand::{self, add, set_command};
 
+use log::info;
+use log::LevelFilter;
 use notify_debouncer_full::{
     new_debouncer,
     notify::{EventKind, RecursiveMode, Watcher},
@@ -26,6 +28,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 use tauri::{AppHandle, Manager};
+use tauri_plugin_log::fern::colors::Color;
+use tauri_plugin_log::fern::colors::ColoredLevelConfig;
+use tauri_plugin_log::LogTarget;
 
 static ARK_SHELF_WORKING_DIR: OnceLock<PathBuf> = OnceLock::new();
 static SCORES_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -49,16 +54,15 @@ struct PreviewLoaded {
 }
 
 fn init_statics_and_dir(path: PathBuf) {
-    ARK_SHELF_WORKING_DIR.set(path.clone()).unwrap();
-    let scores_path = path.join(arklib::STORAGES_FOLDER).join("scores");
+    let scores_path = path.join(arklib::ARK_FOLDER).join("scores");
     SCORES_PATH.set(scores_path).unwrap();
     let metadata_folder = path
-        .join(arklib::STORAGES_FOLDER)
-        .join(arklib::METADATA_PATH);
+        .join(arklib::ARK_FOLDER)
+        .join(arklib::METADATA_STORAGE_FOLDER);
     METADATA_PATH.set(metadata_folder).unwrap();
     let preview_folder = path
-        .join(arklib::STORAGES_FOLDER)
-        .join(arklib::PREVIEWS_PATH);
+        .join(arklib::ARK_FOLDER)
+        .join(arklib::PREVIEWS_STORAGE_FOLDER);
     PREVIEWS_PATH.set(preview_folder).unwrap();
     std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap()).unwrap();
     std::fs::create_dir_all(METADATA_PATH.get().unwrap()).unwrap();
@@ -70,7 +74,8 @@ fn init_statics_and_dir(path: PathBuf) {
     }
 }
 
-fn init_scores(scores_mutex: tauri::State<'_, Arc<Mutex<Scores>>>) {
+fn init_scores(app: &tauri::App) {
+    let scores_mutex: tauri::State<'_, Arc<Mutex<Scores>>> = app.state();
     let scores_path = SCORES_PATH.get().unwrap();
     let scores_string = std::fs::read_to_string(scores_path).unwrap();
     let mut scores = scores_mutex.lock().unwrap();
@@ -118,8 +123,9 @@ async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     Ok(())
 }
 
-fn init_link_watcher(path: &PathBuf, handle: AppHandle) {
+fn init_link_watcher(path: PathBuf, app_handle: &AppHandle) {
     let path = path.clone();
+    let handle = app_handle.clone();
     std::thread::spawn(move || {
         let (tx, rx) = std::sync::mpsc::channel();
         let mut debouncer = new_debouncer(Duration::from_millis(50), None, tx).unwrap();
@@ -159,69 +165,73 @@ fn init_link_watcher(path: &PathBuf, handle: AppHandle) {
     });
 }
 
-fn cli_example(app: tauri::AppHandle) {
-    println!("sleeping for example");
-    std::thread::sleep(std::time::Duration::from_secs(5));
-    app.exit(0);
-}
-
 fn cli_unknown_arg(key: String, app: tauri::AppHandle) {
     println!("sleeping for unhandled cli arg: {}", key);
     std::thread::sleep(std::time::Duration::from_secs(5));
     app.exit(1);
 }
 
+fn run_gui(app: tauri::App, path_buf: PathBuf) {
+    init_statics_and_dir(path_buf.clone());
+    init_scores(&app);
+    app.run(move |_app_handle, event| {
+        init_link_watcher(path_buf.clone(), _app_handle);
+        match event {
+            _ => {}
+        }
+    });
+}
+
 fn main() {
     let scores: Vec<Score> = Vec::new();
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().plugin(
+        tauri_plugin_log::Builder::default()
+            .targets([LogTarget::Stdout, LogTarget::Webview])
+            .with_colors(ColoredLevelConfig::default())
+            .level(LevelFilter::Info)
+            .build(),
+    );
     let builder = set_command(builder);
-    builder
-        .setup(|app| {
-            let handle = app.handle();
-            handle.manage(Arc::new(Mutex::new(scores)));
-            let matches = app.get_cli_matches()?;
-            let scores: tauri::State<'_, Arc<Mutex<Scores>>> = app.state();
+    let app = builder
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+    let handle = app.handle();
+    handle.manage(Arc::new(Mutex::new(scores)));
+    let matches = app.get_cli_matches().unwrap();
 
-            let scores: tauri::State<'_, Arc<Mutex<Scores>>> = scores.clone();
-            let path_buf = ARK_SHELF_WORKING_DIR.get_or_init(|| std::env::current_dir().unwrap());
-            init_statics_and_dir(path_buf.clone());
-            init_scores(scores.clone());
+    if let Some(sub) = matches.subcommand {
+        process_subcommand(sub, &app);
+    }
+    
+    println!("args len: {:?}", matches.args);
+    if let Some(_) = matches.args.get_key_value("help") {
+        println!("This is help option");
+        std::process::exit(1);
+    }
 
-            if matches.args.len() > 0 {
-                for (key, value) in matches.args {
-                    if value.occurrences > 0 {
-                        match key.as_str() {
-                            "path" => {
-                                let path = value.value.as_str().unwrap();
-                                let path_buf = PathBuf::from_str(path)?;
-                                let scores: tauri::State<'_, Arc<Mutex<Scores>>> = scores.clone();
-                                init_statics_and_dir(path_buf);
-                                init_scores(scores);
-                            }
-                            "add" => {
-                                let path = ARK_SHELF_WORKING_DIR
-                                    .get_or_init(|| std::env::current_dir().unwrap());
-                                let manager = handle.clone();
-                                tauri::async_runtime::spawn(async move {
-                                    let _ = get_preview(&path, manager).await;
-                                });
-                            }
-                            _ => cli_unknown_arg(key, app.handle()),
-                        }
-                    }
-                }
-            }
+    // let (_, add_value) = matches.args.get_key_value("add").unwrap(); 
+    // if add_value.occurrences.gt(&0) {
+    //     let path = ARK_SHELF_WORKING_DIR.get_or_init(|| std::env::current_dir().unwrap());
+    //     let manager = handle.clone();
+    //     tauri::async_runtime::spawn(async move {
+    //         let _ = get_preview(&path, manager).await;
+    //     });
+    // }
 
-            if let Some(sub) = matches.subcommand {
-                handle.manage(Arc::new(Mutex::new(Cli::default())));
-                let mutex_cli: tauri::State<'_, Arc<Mutex<Cli>>> = app.state();
-                process_subcommand(sub, mutex_cli, handle.clone());
-            }
-
-            let path = ARK_SHELF_WORKING_DIR.get().unwrap();
-            init_link_watcher(path, handle);
-            Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+    let (_, path_value) = matches.args.get_key_value("path").unwrap();
+    if  path_value.occurrences.gt(&0) {
+        let path_buf = match path_value.value.as_str() {
+            Some(str) => PathBuf::from_str(str).unwrap(),
+            None => std::env::current_dir().unwrap()
+        };
+        info!("ARK SHELF working directory updated to {:?}\n", path_buf);
+        ARK_SHELF_WORKING_DIR.set(path_buf.clone()).unwrap();
+        run_gui(app, path_buf);
+    } else {
+        let path_buf = std::env::current_dir().unwrap();
+        ARK_SHELF_WORKING_DIR.set(path_buf.clone()).unwrap();
+        info!("ARK SHELF working directory updated to {:?}\n", path_buf);
+        
+        run_gui(app, path_buf);
+    }
 }

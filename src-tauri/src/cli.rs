@@ -2,6 +2,8 @@ use arklib::link::Metadata;
 use home::home_dir;
 use url::Url;
 
+use crate::ARK_SHELF_WORKING_DIR;
+
 #[derive(Default, Debug)]
 pub struct Cli {
     pub path: String,
@@ -17,7 +19,7 @@ impl Cli {
                         title: l.title.clone(),
                         desc: l.description.clone(),
                     };
-                    create_link(&l.url, &self.path, metadata).expect("Creating Link");
+                    create_link(&l.url, metadata).expect("Creating Link");
                     return true;
                 }
             }
@@ -42,9 +44,9 @@ pub struct AddLink {
 /// Creates a `.link`
 pub fn create_link(
     url: &str,
-    root_path: &str,
     metadata: arklib::link::Metadata,
 ) -> Result<(), String> {
+    let root_path = ARK_SHELF_WORKING_DIR.get().and_then(|path| path.to_str()).unwrap();
     let url = Url::parse(url).expect("Error parsing url");
     let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .expect("Error compute resource from url");
@@ -64,7 +66,7 @@ mod test {
     fn add_link() {
         let mut cli = Cli::default();
         cli.path = format!(
-            "{}/.ark-shelf",
+            "{}/.ark",
             home_dir().expect("Can't find home dir").display()
         );
         cli.link = Some(Link::Add(AddLink {

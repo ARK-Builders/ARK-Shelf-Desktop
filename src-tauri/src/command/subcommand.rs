@@ -15,7 +15,7 @@ use crate::{
 
 use tauri::{
     api::cli::{Matches, SubcommandMatches},
-    AppHandle, Builder, Runtime,
+    AppHandle, Builder, Manager, Runtime,
 };
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
@@ -27,18 +27,16 @@ pub struct LinkScoreMap {
     pub value: i64,
 }
 
-pub fn process_subcommand(
-    sub: Box<SubcommandMatches>,
-    mutex_cli: tauri::State<'_, Arc<Mutex<Cli>>>,
-    handle: AppHandle,
-) {
+pub fn process_subcommand(sub: Box<SubcommandMatches>, app: &tauri::App) {
+    let handle = app.handle();
+    let mutex_cli: tauri::State<'_, Arc<Mutex<Cli>>> = app.state();
     let sub_matches = sub.matches;
     match sub.name.as_str() {
         "link" => {
             let second_sub_matches = sub_matches.subcommand.unwrap();
             match second_sub_matches.name.as_str() {
                 "add" => {
-                    let mut cli = mutex_cli.lock().unwrap();
+                    let mut cli = Cli::default();
                     let mut add_link = cli::AddLink::default();
                     for (key, value) in second_sub_matches.matches.args {
                         if value.occurrences > 0 {
@@ -89,6 +87,7 @@ pub fn process_subcommand(
                         std::thread::sleep(std::time::Duration::from_secs(5));
                         std::process::exit(1);
                     }
+                    std::process::exit(1);
                 }
                 _ => cli_unknown_arg(second_sub_matches.name, handle),
             }
@@ -105,10 +104,9 @@ pub fn process_subcommand(
 /// Create a `.link`
 async fn create_link(
     url: String,
-    state: tauri::State<'_, Cli>,
     metadata: arklib::link::Metadata,
 ) -> Result<()> {
-    crate::create_link(&url, &state.path, metadata).expect("Error creating link");
+    crate::create_link(&url, metadata).expect("Error creating link");
     Ok(())
 }
 
