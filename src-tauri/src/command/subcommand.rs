@@ -10,12 +10,12 @@ use super::errors::{CommandError, Result};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
-    cli, cli_unknown_arg, Cli, ARK_SHELF_WORKING_DIR, METADATA_PATH, PREVIEWS_PATH, SCORES_PATH,
+    cli, cli_unknown_arg, Cli, ARK_SHELF_WORKING_DIR, METADATA_PATH, PREVIEWS_PATH, SCORES_PATH, init_statics,
 };
 
 use tauri::{
-    api::cli::{Matches, SubcommandMatches},
-    AppHandle, Builder, Manager, Runtime,
+    api::cli::{SubcommandMatches},
+    Builder, Manager, Runtime,
 };
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
@@ -29,7 +29,6 @@ pub struct LinkScoreMap {
 
 pub fn process_subcommand(sub: Box<SubcommandMatches>, app: &tauri::App) {
     let handle = app.handle();
-    let mutex_cli: tauri::State<'_, Arc<Mutex<Cli>>> = app.state();
     let sub_matches = sub.matches;
     match sub.name.as_str() {
         "link" => {
@@ -48,6 +47,9 @@ pub fn process_subcommand(sub: Box<SubcommandMatches>, app: &tauri::App) {
                                         std::thread::sleep(std::time::Duration::from_secs(5));
                                         std::process::exit(1);
                                     }
+                                    let path = PathBuf::from(val.clone());
+                                    ARK_SHELF_WORKING_DIR.set(path.clone()).unwrap();
+                                    init_statics(path);
                                     cli.path = val;
                                 }
                                 "url" => {
@@ -85,9 +87,9 @@ pub fn process_subcommand(sub: Box<SubcommandMatches>, app: &tauri::App) {
                     if !cli.add_new_link() {
                         println!("add new link failed");
                         std::thread::sleep(std::time::Duration::from_secs(5));
-                        std::process::exit(1);
+                        std::process::exit(0);
                     }
-                    std::process::exit(1);
+                    std::process::exit(0);
                 }
                 _ => cli_unknown_arg(second_sub_matches.name, handle),
             }
@@ -105,15 +107,14 @@ pub fn process_subcommand(sub: Box<SubcommandMatches>, app: &tauri::App) {
 async fn create_link(
     url: String,
     metadata: arklib::link::Metadata,
-) -> Result<()> {
-    crate::create_link(&url, metadata).expect("Error creating link");
-    Ok(())
+) -> Result<String> {
+    crate::create_link(&url, metadata)
 }
 
 #[tauri::command]
 /// Remove a `.link` from directory
 async fn delete_link(name: String) -> Result<()> {
-    let path = ARK_SHELF_WORKING_DIR.get().unwrap().join(&name);
+    let path = ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER).join(&name);
     let content = fs::read_to_string(&path)?;
     let id = arklib::id::ResourceId::compute_bytes(content.as_bytes())
         .map_err(|_| CommandError::Arklib)?;
@@ -148,9 +149,10 @@ async fn generate_link_preview(url: String) -> Result<OpenGraph> {
 /// Get the score list
 #[tauri::command]
 pub async fn get_scores(scores: tauri::State<'_, Arc<Mutex<Scores>>>) -> Result<Scores> {
+    let ark = ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER);
     let scores_content = std::fs::read(SCORES_PATH.get().unwrap())?;
     let scores_content = String::from_utf8(scores_content)?;
-    let scores_files = Score::parse_and_merge(scores_content, ARK_SHELF_WORKING_DIR.get().unwrap());
+    let scores_files = Score::parse_and_merge(scores_content, ark);
     let mut guard = scores.lock().unwrap();
     *guard = scores_files.clone();
     Ok(scores_files)
@@ -233,8 +235,9 @@ pub struct LinkWrapper {
 #[tauri::command]
 /// Read data from `.link` file
 async fn read_link(name: String) -> Result<LinkWrapper> {
-    let file_path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&name);
-    let link = Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &file_path)
+    let ark = ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER);
+    let file_path = PathBuf::from(ark.clone()).join(&name);
+    let link = Link::load(ark, file_path.clone())
         .map_err(|_| CommandError::Arklib)?;
     let meta = fs::metadata(&file_path)?;
     let created_time = match meta.created() {
@@ -250,7 +253,8 @@ async fn read_link(name: String) -> Result<LinkWrapper> {
 }
 
 fn get_fs_links() -> Vec<DirEntry> {
-    WalkDir::new(ARK_SHELF_WORKING_DIR.get().unwrap())
+    let ark = ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER);
+    WalkDir::new(ark)
         .max_depth(1)
         .into_iter()
         .filter(|file| {

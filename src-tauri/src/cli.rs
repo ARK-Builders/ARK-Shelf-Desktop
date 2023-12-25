@@ -1,8 +1,9 @@
+use std::path::PathBuf;
+
 use arklib::link::Metadata;
-use home::home_dir;
 use url::Url;
 
-use crate::ARK_SHELF_WORKING_DIR;
+use crate::{ARK_SHELF_WORKING_DIR, command::errors::{Result, CommandError}, METADATA_PATH};
 
 #[derive(Default, Debug)]
 pub struct Cli {
@@ -19,7 +20,7 @@ impl Cli {
                         title: l.title.clone(),
                         desc: l.description.clone(),
                     };
-                    create_link(&l.url, metadata).expect("Creating Link");
+                    create_link(&l.url, metadata).expect("Creating Link failed");
                     return true;
                 }
             }
@@ -45,22 +46,30 @@ pub struct AddLink {
 pub fn create_link(
     url: &str,
     metadata: arklib::link::Metadata,
-) -> Result<(), String> {
-    let root_path = ARK_SHELF_WORKING_DIR.get().and_then(|path| path.to_str()).unwrap();
+) -> Result<String> {
+    let root_path = ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER);
     let url = Url::parse(url).expect("Error parsing url");
     let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .expect("Error compute resource from url");
     let domain = url.domain().expect("Url has no domain");
-    let path = format!("{root_path}/{domain}-{id}.link");
-    let mut link = arklib::link::Link::new(url, metadata.title, metadata.desc);
-    let write = link.write_to_path(root_path, &path, true);
-    tauri::async_runtime::block_on(async { write.await.expect("Writing link to path") });
-    Ok(())
+    let file_name = format!("{domain}-{id}.link");
+    let path = root_path.join(file_name.clone());
+    if std::fs::metadata(&path).is_ok() {
+        Err(CommandError::LinkExist)
+    } else {
+        println!("path: {:?}", path);
+        std::fs::write(path, url.as_str()).expect("writing file failed");
+
+        let meta_path: PathBuf = METADATA_PATH.get().unwrap().join(format!("{id}"));
+        std::fs::write(&meta_path, serde_json::to_string(&metadata).unwrap()).expect("writing metadata failed");
+        Ok(file_name)
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use home::home_dir;
 
     #[test]
     fn add_link() {

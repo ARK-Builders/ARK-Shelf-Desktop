@@ -53,7 +53,7 @@ struct PreviewLoaded {
     created_time: Option<SystemTime>,
 }
 
-fn init_statics_and_dir(path: PathBuf) {
+fn init_statics(path: PathBuf) {
     let scores_path = path.join(arklib::ARK_FOLDER).join("scores");
     SCORES_PATH.set(scores_path).unwrap();
     let metadata_folder = path
@@ -64,7 +64,10 @@ fn init_statics_and_dir(path: PathBuf) {
         .join(arklib::ARK_FOLDER)
         .join(arklib::PREVIEWS_STORAGE_FOLDER);
     PREVIEWS_PATH.set(preview_folder).unwrap();
-    std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap()).unwrap();
+}
+
+fn init_dirs() {
+    std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER)).unwrap();
     std::fs::create_dir_all(METADATA_PATH.get().unwrap()).unwrap();
     std::fs::create_dir_all(PREVIEWS_PATH.get().unwrap()).unwrap();
 
@@ -83,7 +86,7 @@ fn init_scores(app: &tauri::App) {
     // Skip if there's no content in the file.
     if !scores_string.is_empty() {
         let mut score: Scores =
-            Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.get().unwrap());
+            Score::parse_and_merge(scores_string, ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER));
         scores.append(&mut score)
     }
 
@@ -123,7 +126,7 @@ async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     Ok(())
 }
 
-fn init_link_watcher(path: PathBuf, app_handle: &AppHandle) {
+fn init_link_watcher(path: PathBuf, app_handle: AppHandle) {
     let path = path.clone();
     let handle = app_handle.clone();
     std::thread::spawn(move || {
@@ -172,10 +175,12 @@ fn cli_unknown_arg(key: String, app: tauri::AppHandle) {
 }
 
 fn run_gui(app: tauri::App, path_buf: PathBuf) {
-    init_statics_and_dir(path_buf.clone());
+    let handle = app.handle();
+    init_statics(path_buf.clone());
+    init_dirs();
     init_scores(&app);
-    app.run(move |_app_handle, event| {
-        init_link_watcher(path_buf.clone(), _app_handle);
+    init_link_watcher(path_buf.clone(), handle);
+    app.run(move |_, event| {
         match event {
             _ => {}
         }
@@ -209,14 +214,14 @@ fn main() {
         std::process::exit(1);
     }
 
-    // let (_, add_value) = matches.args.get_key_value("add").unwrap(); 
-    // if add_value.occurrences.gt(&0) {
-    //     let path = ARK_SHELF_WORKING_DIR.get_or_init(|| std::env::current_dir().unwrap());
-    //     let manager = handle.clone();
-    //     tauri::async_runtime::spawn(async move {
-    //         let _ = get_preview(&path, manager).await;
-    //     });
-    // }
+    let (_, add_value) = matches.args.get_key_value("add").unwrap(); 
+    if add_value.occurrences.gt(&0) {
+        let path = ARK_SHELF_WORKING_DIR.get_or_init(|| std::env::current_dir().unwrap());
+        let manager = handle.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = get_preview(&path, manager).await;
+        });
+    }
 
     let (_, path_value) = matches.args.get_key_value("path").unwrap();
     if  path_value.occurrences.gt(&0) {
