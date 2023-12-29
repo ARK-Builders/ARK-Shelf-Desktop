@@ -1,4 +1,6 @@
 use serde::Serialize;
+use serde::Deserialize;
+use std::io::BufRead;
 use std::{
     fs::{self, File},
     io::Write,
@@ -17,6 +19,8 @@ use tauri::{
     api::cli::{SubcommandMatches},
     Builder, Manager, Runtime,
 };
+
+use std::str::{self, FromStr};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
@@ -232,22 +236,41 @@ pub struct LinkWrapper {
     created_time: Option<std::time::SystemTime>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Properties {
+    pub title: String,
+    pub desc: Option<String>,
+}
+
 #[tauri::command]
 /// Read data from `.link` file
 async fn read_link(name: String) -> Result<LinkWrapper> {
     let ark = ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER);
-    let file_path = PathBuf::from(ark.clone()).join(&name);
-    let link = Link::load(ark, file_path.clone())
-        .map_err(|_| CommandError::Arklib)?;
-    let meta = fs::metadata(&file_path)?;
+    let arkpath = PathBuf::from(ark.clone()).join(&name);
+
+    let content = std::fs::read_to_string(arkpath.clone())?;
+    let url = Url::from_str(&content).unwrap();
+    let id = arklib::id::ResourceId::compute_bytes(url.as_str().as_bytes()).unwrap();
+
+    let meta_path = PathBuf::from(ark.clone())
+        .join("cache")
+        .join("metadata")
+        .join(id.to_string());
+
+    let file = File::open(meta_path.clone())?;
+    let data = std::io::BufReader::new(file).lines().next().unwrap()?;
+    let user_meta: Properties = serde_json::from_str(&data).unwrap();
+
+    println!("id: {:?}", id);
+    let meta = fs::metadata(arkpath.clone())?;
     let created_time = match meta.created() {
         Ok(time) => Some(time),
         Err(_) => None,
     };
     Ok(LinkWrapper {
-        title: link.meta.title,
-        desc: link.meta.desc,
-        url: link.url,
+        title: user_meta.title,
+        desc: user_meta.desc,
+        url: url,
         created_time,
     })
 }

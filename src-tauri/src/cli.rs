@@ -14,7 +14,7 @@ pub struct Cli {
 impl Cli {
     pub fn add_new_link(&self) -> bool {
         if let Some(link) = &self.link {
-            match link {
+                        match link {
                 Link::Add(l) => {
                     let metadata = Metadata {
                         title: l.title.clone(),
@@ -68,18 +68,23 @@ pub fn create_link(
 
 #[cfg(test)]
 mod test {
+    use crate::{init_statics, init_dirs};
+
     use super::*;
-    use home::home_dir;
 
     #[test]
     fn add_link() {
+        let path_buf = std::env::current_dir().unwrap();
+        ARK_SHELF_WORKING_DIR.set(path_buf.clone()).unwrap();
+        init_statics(path_buf.clone());
+        init_dirs();
+
         let mut cli = Cli::default();
-        cli.path = format!(
-            "{}/.ark",
-            home_dir().expect("Can't find home dir").display()
-        );
+        cli.path = path_buf.to_str().unwrap().to_string();
+
+
         cli.link = Some(Link::Add(AddLink {
-            url: "http://example.com".into(),
+            url: "http://google.com".into(),
             title: "test".into(),
             description: None,
         }));

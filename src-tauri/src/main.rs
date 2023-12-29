@@ -66,7 +66,7 @@ fn init_statics(path: PathBuf) {
     PREVIEWS_PATH.set(preview_folder).unwrap();
 }
 
-fn init_dirs() {
+pub fn init_dirs() {
     std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap().join(arklib::ARK_FOLDER)).unwrap();
     std::fs::create_dir_all(METADATA_PATH.get().unwrap()).unwrap();
     std::fs::create_dir_all(PREVIEWS_PATH.get().unwrap()).unwrap();
@@ -77,7 +77,7 @@ fn init_dirs() {
     }
 }
 
-fn init_scores(app: &tauri::App) {
+pub fn init_scores(app: &tauri::App) {
     let scores_mutex: tauri::State<'_, Arc<Mutex<Scores>>> = app.state();
     let scores_path = SCORES_PATH.get().unwrap();
     let scores_string = std::fs::read_to_string(scores_path).unwrap();
@@ -205,6 +205,11 @@ fn main() {
     let matches = app.get_cli_matches().unwrap();
 
     if let Some(sub) = matches.subcommand {
+        let path_buf = std::env::current_dir().unwrap();
+        ARK_SHELF_WORKING_DIR.set(path_buf.clone()).unwrap();
+
+        init_statics(path_buf.clone());
+        init_dirs();
         process_subcommand(sub, &app);
     }
     
