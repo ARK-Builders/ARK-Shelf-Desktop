@@ -253,8 +253,7 @@ async fn read_link(name: String) -> Result<LinkWrapper> {
     let id = arklib::id::ResourceId::compute_bytes(url.as_str().as_bytes()).unwrap();
 
     let meta_path = PathBuf::from(ark.clone())
-        .join("cache")
-        .join("metadata")
+        .join(arklib::METADATA_STORAGE_FOLDER)
         .join(id.to_string());
 
     let file = File::open(meta_path.clone())?;
