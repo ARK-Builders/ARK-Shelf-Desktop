@@ -18,9 +18,7 @@ use tauri::{Builder, Runtime};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
-#[tauri::command]
-/// Create a `.link`
-async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
+pub fn create_link_command(url: String, metadata: arklib::link::Metadata) -> Result<String> {
     let url = Url::parse(url.as_str())?;
     let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
@@ -35,9 +33,15 @@ async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<St
         std::fs::write(link_path, url.as_str())?;
 
         let meta_path = METADATA_PATH.get().unwrap().join(format!("{id}"));
-        std::fs::write(&meta_path, serde_json::to_string(&metadata).unwrap())?;
+        std::fs::write(meta_path, serde_json::to_string(&metadata).unwrap())?;
         Ok(file_name)
     }
+}
+
+#[tauri::command]
+/// Create a `.link`
+async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
+    create_link_command(url, metadata)
 }
 
 #[tauri::command]
