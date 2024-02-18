@@ -15,9 +15,9 @@
     $: visibleLinks = $linksInfos.filter(l => {
         if (search) {
             return (
-                l.url.toLocaleLowerCase().includes(search) ||
-                l.title.toLocaleLowerCase().includes(search) ||
-                l.desc?.toLocaleLowerCase().includes(search)
+                l.url.toLocaleLowerCase().includes(search.toLocaleLowerCase()) ||
+                l.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()) ||
+                l.desc?.toLocaleLowerCase().includes(search.toLocaleLowerCase())
             );
         } else {
             return true;
@@ -37,6 +37,13 @@
         ARK Shelf
     </h1>
     <main class="absolute top-14 h-[calc(100vh-3.5rem)] w-screen">
+        <div class="bg-neutral-950 px-8 py-4">
+            <input
+                type="search"
+                class="w-56 rounded-md bg-neutral-950 py-3 outline-none ring-1 ring-neutral-500"
+                placeholder="Search"
+                bind:value={search} />
+        </div>
         <div class="flex h-full overflow-hidden overflow-y-scroll bg-neutral-950 px-8 py-4">
             <div class="flex grow flex-col items-center space-y-2 pr-4">
                 {#await initialFetch}
@@ -50,10 +57,7 @@
                     {/each}
                 {/await}
             </div>
-            <Form
-                on:search={e => {
-                    search = e.detail.toLocaleLowerCase();
-                }} />
+            <Form />
         </div>
     </main>
 </div>

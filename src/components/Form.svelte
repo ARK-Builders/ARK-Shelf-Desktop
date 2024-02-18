@@ -4,9 +4,6 @@
     import { createLink, debounce, getPreview } from './utils';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
-    import { createEventDispatcher } from 'svelte';
-
-    const dispatch = createEventDispatcher<{ search: string }>();
 
     let url = '';
     let title = '';
@@ -40,7 +37,7 @@
     }, 200);
 </script>
 
-<div class="w-56">
+<div class="sticky top-0 w-56">
     <div class="flex w-full justify-between">
         <button
             class="rounded-md p-2"
@@ -59,20 +56,8 @@
             <Scores />
         </button>
     </div>
-    <div class="py-2">
-        <input
-            type="search"
-            class="w-full rounded-md bg-neutral-950 py-3 outline-none ring-1 ring-neutral-500"
-            placeholder="Search"
-            on:change={e => {
-                dispatch('search', e.currentTarget.value);
-            }}
-            on:input={e => {
-                dispatch('search', e.currentTarget.value);
-            }} />
-    </div>
     <form
-        class="sticky top-0 flex flex-col space-y-2"
+        class="flex flex-col space-y-2"
         on:submit|preventDefault={async e => {
             const form = e.currentTarget;
             const formData = new FormData(form);
