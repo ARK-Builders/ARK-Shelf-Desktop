@@ -1,9 +1,10 @@
 <script lang="ts">
+    import { invoke } from '@tauri-apps/api';
     import { toast } from '@zerodevx/svelte-toast';
-    import { linksInfos } from '../store';
-    import { createLink, debounce, getPreview } from './utils';
     import Calendar from '~icons/ic/baseline-calendar-month';
     import Scores from '~icons/ic/baseline-format-list-bulleted';
+    import { linksInfos } from '../store';
+    import { createLink, debounce, getPreview } from './utils';
 
     let url = '';
     let title = '';
@@ -12,11 +13,21 @@
 
     $: disabled = !url;
 
-    const auto = async () => {
+    const auto = async e => {
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const ftitle = formData.get('title')?.toString() ?? '';
+        const url = formData.get('url')?.toString() ?? '';
+        const desc = formData.get('description')?.toString();
+        const data = {
+            title: ftitle,
+            url,
+            desc,
+        };
         if (url && title && description) {
             return;
         } else if (url) {
-            const graph = await getPreview(url);
+            const graph = await getPreview(data);
             if (graph) {
                 title = graph.title ?? '';
                 description = graph.description ?? '';
@@ -35,6 +46,10 @@
             error = false;
         }
     }, 200);
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
 </script>
 
 <div class="w-56">
@@ -63,7 +78,7 @@
             const formData = new FormData(form);
             const title = formData.get('title')?.toString() ?? '';
             const url = formData.get('url')?.toString() ?? '';
-            const desc = formData.get('description')?.toString();
+            const desc = formData.get('description')?.toString() ?? null;
             const data = {
                 title,
                 url,
@@ -79,6 +94,12 @@
                     });
                     form.reset();
                     toast.push('Link created!');
+                    const gui_state = await invoke('gui_state');
+                    
+                    if (gui_state === true) {
+                        await delay(500);
+                        await invoke('exit_app');
+                    }
                 } else {
                     toast.push('Error creating link');
                 }

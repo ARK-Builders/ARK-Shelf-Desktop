@@ -5,12 +5,13 @@ export const createLink = async (
     data: Omit<LinkInfo, 'created_timed' | 'score' | 'name'>,
 ): Promise<LinkInfo | undefined> => {
     try {
+        const properties = {
+            title: data.title,
+            description: data.desc || null,
+        };
         const name = await invoke<string>('create_link', {
             url: data.url,
-            metadata: {
-                title: data.title,
-                description: data.desc,
-            },
+            properties,
         });
         const now = new Date();
         const created_time = {
@@ -29,9 +30,17 @@ export const createLink = async (
     }
 };
 
-export const getPreview = async (url: string): Promise<OpenGraph | undefined> => {
+export const getPreview = async (
+    data: Omit<LinkInfo, 'created_timed' | 'score' | 'name'>,
+): Promise<OpenGraph | undefined> => {
     try {
-        const openGraph = await invoke<OpenGraph>('generate_link_preview', { url });
+        const openGraph = await invoke<OpenGraph>('generate_link_preview', {
+            url: data.url,
+            properties: {
+                title: data.title,
+                description: data.desc,
+            },
+        });
         return openGraph;
     } catch (e) {
         return;

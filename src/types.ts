@@ -5,7 +5,7 @@ export interface SystemTime {
 
 export interface LinkInfo {
     title: string;
-    desc?: string;
+    desc?: string | null;
     url: string;
     name: string;
     created_time?: SystemTime;

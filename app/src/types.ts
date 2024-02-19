@@ -36,4 +36,4 @@ export interface LinkScoreMap {
     value: number;
 }
 
-export type SortMode = "normal" | "date" | "score";
+export type SortMode = 'normal' | 'date' | 'score';

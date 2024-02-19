@@ -28,7 +28,7 @@
         if (link.graph) {
             return link.graph;
         }
-        const preview = await getPreview(link.url);
+        const preview = await getPreview(link);
         return {
             imageUrl: preview?.image,
             title: preview?.title,

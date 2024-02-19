@@ -11,8 +11,6 @@ pub enum CommandError {
     Url,
     #[error("Arklib error")]
     Arklib,
-    #[error("Alreay exist")]
-    LinkExist,
     #[error("IO error")]
     IO,
 }
