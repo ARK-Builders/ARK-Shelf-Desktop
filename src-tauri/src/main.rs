@@ -6,7 +6,8 @@
 pub mod base;
 mod command;
 use base::Score;
-use clap::Parser;
+use clap::{arg, Parser, Subcommand};
+
 use command::Result;
 use command::*;
 use home::home_dir;
@@ -41,6 +42,24 @@ struct Cli {
         default_value_t = format!("{}/.ark-shelf",home_dir().unwrap().display())
     )]
     path: String,
+    #[clap(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Add a link
+    Add {
+        /// url of the link
+        #[arg(short, long)]
+        url: String,
+        /// title to give to the link
+        #[arg(short, long)]
+        title: String,
+        /// optional description to give to the link
+        #[arg(short, long)]
+        description: Option<String>,
+    },
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -80,15 +99,43 @@ fn init_statics_and_dir() {
     std::fs::create_dir_all(PREVIEWS_PATH.get().unwrap()).unwrap();
 
     let scores_path = SCORES_PATH.get().unwrap();
-    if let Err(_) = std::fs::metadata(SCORES_PATH.get().unwrap()) {
+    if std::fs::metadata(SCORES_PATH.get().unwrap()).is_err() {
         File::create(scores_path).unwrap();
+    }
+
+    if let Some(Commands::Add {
+        title,
+        description,
+        url,
+    }) = cli.command
+    {
+        let metadata = arklib::link::Metadata {
+            title,
+            desc: description,
+        };
+        let created = create_link_command(url, metadata);
+        match created {
+            Err(_) => {
+                eprintln!("An error occured during the creation of the link");
+                std::process::exit(1)
+            }
+            Ok(s) => {
+                let mut file_path = METADATA_PATH.get().unwrap().clone();
+                file_path.push(s);
+                eprintln!(
+                    "The link has been saved to the file {}",
+                    file_path.display()
+                );
+                std::process::exit(0)
+            }
+        }
     }
 }
 
 async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     let file_content = std::fs::read_to_string(path)?;
     let url = url::Url::parse(&file_content)?;
-    let id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes())
+    let id = arklib::id::ResourceId::compute_bytes(url.as_str().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
     let graph_preview = arklib::link::Link::get_preview(url.to_string())
         .await

@@ -12,7 +12,7 @@ tauri-build = { version = "1.0.3", features = [] }
 
 [dependencies]
 arklib = { git = "https://github.com/ARK-Builders/arklib", rev = "51cfa7d6" }
-clap = { version = "3.2.8", features = ["derive"] }
+clap = { version = "4.5.0", features = ["derive"] }
 home = "0.5.3"
 notify-debouncer-full = "0.3.1"
 scraper = "0.13.0"
