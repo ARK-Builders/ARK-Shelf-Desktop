@@ -7,7 +7,7 @@ export const createLink = async (
     try {
         const name = await invoke<string>('create_link', {
             url: data.url,
-            metadata: {
+            properties: {
                 title: data.title,
                 description: data.desc,
             },

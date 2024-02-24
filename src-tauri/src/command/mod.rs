@@ -11,7 +11,7 @@ pub use errors::{CommandError, Result};
 
 use crate::{
     base::{Link, OpenGraph, Score, Scores},
-    ARK_SHELF_WORKING_DIR, METADATA_PATH, PREVIEWS_PATH, SCORES_PATH,
+    ARK_SHELF_WORKING_DIR, PREVIEWS_PATH, PROPERTIES_PATH, SCORES_PATH,
 };
 
 use tauri::{Builder, Runtime};
@@ -20,24 +20,13 @@ use walkdir::{DirEntry, WalkDir};
 
 #[tauri::command]
 /// Create a `.link`
-async fn create_link(url: String, metadata: arklib::link::Metadata) -> Result<String> {
+async fn create_link(url: String, properties: arklib::link::Properties) -> Result<String> {
     let url = Url::parse(url.as_str())?;
-    let id = arklib::id::ResourceId::compute_bytes(url.as_ref().as_bytes())
-        .map_err(|_| CommandError::Arklib)?;
-    let domain = url.domain().expect("Url has no domain");
-    let file_name = format!("{domain}-{id}.link");
-    let link_path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&file_name);
-
-    // Check that there is no resource with same id yet
-    if std::fs::metadata(&link_path).is_ok() {
-        Err(CommandError::LinkExist)
-    } else {
-        std::fs::write(link_path, url.as_str())?;
-
-        let meta_path = METADATA_PATH.get().unwrap().join(format!("{id}"));
-        std::fs::write(&meta_path, serde_json::to_string(&metadata).unwrap())?;
-        Ok(file_name)
-    }
+    let link = arklib::link::Link::new(url, properties.title, properties.desc);
+    link.save(ARK_SHELF_WORKING_DIR.get().unwrap(), true)
+        .await?;
+    let name = link.id()?.to_string();
+    Ok(name)
 }
 
 #[tauri::command]
@@ -50,7 +39,7 @@ async fn delete_link(name: String) -> Result<()> {
     fs::remove_file(&path)?;
 
     let id = id.to_string();
-    let metadata_path = METADATA_PATH.get().unwrap().join(&id);
+    let metadata_path = PROPERTIES_PATH.get().unwrap().join(&id);
     let preview_path = PREVIEWS_PATH.get().unwrap().join(&id);
     fs::remove_file(metadata_path).ok();
     fs::remove_file(preview_path).ok();
@@ -72,7 +61,10 @@ async fn read_link_list() -> Vec<String> {
 
 #[tauri::command]
 async fn generate_link_preview(url: String) -> Result<OpenGraph> {
-    Link::get_preview(url).await.map_err(|_| CommandError::IO)
+    let filename = arklib::id::ResourceId::compute_bytes(url.as_ref())?.to_string();
+    let filepath = std::path::PathBuf::from(filename);
+    let link = arklib::link::Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &filepath)?;
+    Ok(link.get_preview().await?)
 }
 
 /// Get the score list
@@ -164,7 +156,8 @@ pub struct LinkWrapper {
 /// Read data from `.link` file
 async fn read_link(name: String) -> Result<LinkWrapper> {
     let file_path = PathBuf::from(ARK_SHELF_WORKING_DIR.get().unwrap()).join(&name);
-    let link = Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &file_path)
+    let name = std::path::PathBuf::from(name);
+    let link = Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), &name)
         .map_err(|_| CommandError::Arklib)?;
     let meta = fs::metadata(&file_path)?;
     let created_time = match meta.created() {
@@ -172,8 +165,8 @@ async fn read_link(name: String) -> Result<LinkWrapper> {
         Err(_) => None,
     };
     Ok(LinkWrapper {
-        title: link.meta.title,
-        desc: link.meta.desc,
+        title: link.prop.title,
+        desc: link.prop.desc,
         url: link.url,
         created_time,
     })
@@ -183,14 +176,7 @@ fn get_fs_links() -> Vec<DirEntry> {
     WalkDir::new(ARK_SHELF_WORKING_DIR.get().unwrap())
         .max_depth(1)
         .into_iter()
-        .filter(|file| {
-            file.as_ref()
-                .unwrap()
-                .file_name()
-                .to_str()
-                .unwrap()
-                .ends_with(".link")
-        })
+        .filter(|file| file.as_ref().unwrap().file_type().is_file())
         .map(|e| e.unwrap())
         .collect::<Vec<DirEntry>>()
 }

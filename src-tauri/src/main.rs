@@ -25,7 +25,7 @@ use tauri::{AppHandle, Manager};
 
 static ARK_SHELF_WORKING_DIR: OnceLock<PathBuf> = OnceLock::new();
 static SCORES_PATH: OnceLock<PathBuf> = OnceLock::new();
-static METADATA_PATH: OnceLock<PathBuf> = OnceLock::new();
+static PROPERTIES_PATH: OnceLock<PathBuf> = OnceLock::new();
 static PREVIEWS_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 #[derive(Parser, Default, Debug)]
@@ -62,25 +62,27 @@ struct PreviewLoaded {
 fn init_statics_and_dir() {
     let cli = Cli::parse();
     let working_dir = PathBuf::from(&cli.path);
-    ARK_SHELF_WORKING_DIR.set(working_dir).unwrap();
+    ARK_SHELF_WORKING_DIR.set(working_dir.clone()).unwrap();
+    arklib::app_id::load(working_dir).unwrap();
+
     let scores_path = PathBuf::from(&cli.path)
-        .join(arklib::STORAGES_FOLDER)
+        .join(arklib::ARK_FOLDER)
         .join("scores");
     SCORES_PATH.set(scores_path).unwrap();
-    let metadata_folder = PathBuf::from(&cli.path)
-        .join(arklib::STORAGES_FOLDER)
-        .join(arklib::METADATA_PATH);
-    METADATA_PATH.set(metadata_folder).unwrap();
+    let properties_folder = PathBuf::from(&cli.path)
+        .join(arklib::ARK_FOLDER)
+        .join(arklib::METADATA_STORAGE_FOLDER);
+    PROPERTIES_PATH.set(properties_folder).unwrap();
     let preview_folder = PathBuf::from(&cli.path)
-        .join(arklib::STORAGES_FOLDER)
-        .join(arklib::PREVIEWS_PATH);
+        .join(arklib::ARK_FOLDER)
+        .join(arklib::PREVIEWS_STORAGE_FOLDER);
     PREVIEWS_PATH.set(preview_folder).unwrap();
     std::fs::create_dir_all(ARK_SHELF_WORKING_DIR.get().unwrap()).unwrap();
-    std::fs::create_dir_all(METADATA_PATH.get().unwrap()).unwrap();
+    std::fs::create_dir_all(PROPERTIES_PATH.get().unwrap()).unwrap();
     std::fs::create_dir_all(PREVIEWS_PATH.get().unwrap()).unwrap();
 
     let scores_path = SCORES_PATH.get().unwrap();
-    if let Err(_) = std::fs::metadata(SCORES_PATH.get().unwrap()) {
+    if std::fs::metadata(SCORES_PATH.get().unwrap()).is_err() {
         File::create(scores_path).unwrap();
     }
 }
@@ -90,9 +92,8 @@ async fn get_preview(path: &PathBuf, manager: AppHandle) -> Result<()> {
     let url = url::Url::parse(&file_content)?;
     let id = arklib::id::ResourceId::compute_bytes(&url.as_str().as_bytes())
         .map_err(|_| CommandError::Arklib)?;
-    let graph_preview = arklib::link::Link::get_preview(url.to_string())
-        .await
-        .map_err(|_| CommandError::Arklib)?;
+    let link = arklib::link::Link::load(ARK_SHELF_WORKING_DIR.get().unwrap(), path)?;
+    let graph_preview = link.get_preview().await?;
     let image_data = graph_preview
         .fetch_image()
         .await
