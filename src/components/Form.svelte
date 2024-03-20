@@ -37,7 +37,7 @@
     }, 200);
 </script>
 
-<div class="w-56">
+<div class="sticky top-0 w-56">
     <div class="flex w-full justify-between">
         <button
             class="rounded-md p-2"
@@ -57,7 +57,7 @@
         </button>
     </div>
     <form
-        class="sticky top-0 flex flex-col space-y-2"
+        class="flex flex-col space-y-2"
         on:submit|preventDefault={async e => {
             const form = e.currentTarget;
             const formData = new FormData(form);

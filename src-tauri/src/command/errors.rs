@@ -11,8 +11,6 @@ pub enum CommandError {
     Url,
     #[error("Arklib error")]
     Arklib,
-    #[error("Alreay exist")]
-    LinkExist,
     #[error("IO error")]
     IO,
 }
@@ -32,5 +30,11 @@ impl From<std::io::Error> for CommandError {
 impl From<FromUtf8Error> for CommandError {
     fn from(_: FromUtf8Error) -> Self {
         Self::IO
+    }
+}
+
+impl From<arklib::ArklibError> for CommandError {
+    fn from(_: arklib::ArklibError) -> Self {
+        Self::Arklib
     }
 }
