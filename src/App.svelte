@@ -7,8 +7,20 @@
     import { SvelteToast } from '@zerodevx/svelte-toast';
     import { readCurrentLinks } from './components/utils';
     import Loading from '~icons/line-md/loading-loop';
+    import { readText } from '@tauri-apps/api/clipboard';
 
     let initialFetch: Promise<LinkInfo[]>;
+    let showForm = false;
+    let url = '';
+
+    async function onKeyDown(event: KeyboardEvent) {
+        // Open save dialog if ctrl+v is used but only if it's not already open
+        // It then auto-fills the url field with clipboard contents
+        if (event.ctrlKey && event.key == 'v' && !showForm) {
+            url = await readText() ?? "";
+            showForm = !showForm;
+        }
+    }
 
     let search = '';
 
@@ -33,8 +45,16 @@
 </script>
 
 <div class="relative flex h-screen min-h-screen w-screen flex-col text-white">
-    <h1 class="fixed flex h-14 w-full items-center bg-neutral-800 px-8 text-lg font-medium">
-        ARK Shelf
+    <h1 class="fixed flex h-14 w-full items-center justify-between bg-neutral-800 px-8 text-lg font-medium">
+        ARK Shelf 
+        <!-- Show Link Creation Form -->
+        <button on:click={() => (showForm = !showForm)} class="text-white px-4 py-2 rounded-md ml-4 border hover:bg-blue-400 border-blue-400">
+            {#if showForm}
+                Hide
+            {:else}
+                Save
+            {/if}    
+        </button>
     </h1>
     <main class="absolute top-14 h-[calc(100vh-3.5rem)] w-screen">
         <div class="bg-neutral-950 px-8 py-4">
@@ -57,7 +77,13 @@
                     {/each}
                 {/await}
             </div>
-            <Form />
+
+            <!-- Clicking Save button will open the link creation form
+            Clicking Hide or sucessfully submitting the link will close it. 
+            If opened via ctrl+v then the meta fields will also open -->
+            {#if showForm}
+                <Form url={url} bind:show={showForm}/>
+            {/if}
         </div>
     </main>
 </div>
@@ -75,3 +101,5 @@
         --toastContainerLeft: auto;
     }
 </style>
+
+<svelte:window on:keydown={onKeyDown} />
